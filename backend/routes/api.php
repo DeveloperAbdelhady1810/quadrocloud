@@ -10,11 +10,19 @@ use App\Http\Controllers\API\InvoiceController;
 use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\API\TicketController;
 use App\Http\Controllers\API\WebhookController;
+use App\Http\Controllers\API\PostController;
+use App\Http\Controllers\API\PublicServiceController;
 
 Route::prefix('v1')->group(function () {
 
     // Paymob webhook — no auth
     Route::post('webhooks/paymob', [WebhookController::class, 'paymob']);
+
+    // Public routes — no auth required
+    Route::get('posts', [PostController::class, 'index']);
+    Route::get('posts/{post}', [PostController::class, 'show']);
+    Route::get('services/public', [PublicServiceController::class, 'index']);
+    Route::post('services/{service}/request', [PublicServiceController::class, 'request']);
 
     // Client auth
     Route::prefix('auth')->group(function () {

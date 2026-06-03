@@ -62,5 +62,10 @@
   "noPayments": "No payments yet",
   "noInvoices": "No invoices",
   "noTickets": "No support tickets",
-  "noPendingFees": "No pending fees"
+  "noPendingFees": "No pending fees",
+  "explore": "Explore",
+  "news": "News",
+  "ourServices": "Our Services",
+  "noNews": "No news available",
+  "noServices": "No services available"
 }

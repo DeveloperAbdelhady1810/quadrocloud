@@ -8,10 +8,11 @@ class MainShell extends StatelessWidget {
 
   int _currentIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
-    if (loc.startsWith('/contracts')) return 1;
-    if (loc.startsWith('/invoices') || loc.startsWith('/payments')) return 2;
-    if (loc.startsWith('/tickets')) return 3;
-    if (loc.startsWith('/settings')) return 4;
+    if (loc.startsWith('/explore')) return 1;
+    if (loc.startsWith('/contracts')) return 2;
+    if (loc.startsWith('/invoices') || loc.startsWith('/payments')) return 3;
+    if (loc.startsWith('/tickets')) return 4;
+    if (loc.startsWith('/settings')) return 5;
     return 0;
   }
 
@@ -26,14 +27,16 @@ class MainShell extends StatelessWidget {
         onDestinationSelected: (i) {
           switch (i) {
             case 0: context.go('/home'); break;
-            case 1: context.go('/contracts'); break;
-            case 2: context.go('/invoices'); break;
-            case 3: context.go('/tickets'); break;
-            case 4: context.go('/settings'); break;
+            case 1: context.go('/explore'); break;
+            case 2: context.go('/contracts'); break;
+            case 3: context.go('/invoices'); break;
+            case 4: context.go('/tickets'); break;
+            case 5: context.go('/settings'); break;
           }
         },
         destinations: [
           NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: l.home),
+          NavigationDestination(icon: const Icon(Icons.explore_outlined), selectedIcon: const Icon(Icons.explore), label: l.explore),
           NavigationDestination(icon: const Icon(Icons.description_outlined), selectedIcon: const Icon(Icons.description), label: l.contracts),
           NavigationDestination(icon: const Icon(Icons.receipt_outlined), selectedIcon: const Icon(Icons.receipt), label: l.invoices),
           NavigationDestination(icon: const Icon(Icons.headset_mic_outlined), selectedIcon: const Icon(Icons.headset_mic), label: l.support),
