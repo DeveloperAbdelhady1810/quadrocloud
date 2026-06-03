@@ -9,6 +9,8 @@ use App\Http\Controllers\Dashboard\PaymentController;
 use App\Http\Controllers\Dashboard\ReportController;
 use App\Http\Controllers\Dashboard\TicketController;
 use App\Http\Controllers\Dashboard\TeamController;
+use App\Http\Controllers\Dashboard\PostController;
+use App\Http\Controllers\Dashboard\ServiceController;
 
 Route::get('/', fn() => redirect()->route('dashboard.login'));
 
@@ -68,5 +70,21 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
         Route::get('team', [TeamController::class, 'index'])->name('team.index');
         Route::post('team', [TeamController::class, 'store'])->name('team.store');
         Route::post('team/{user}/toggle', [TeamController::class, 'toggleActive'])->name('team.toggle');
+
+        // Posts
+        Route::get('posts', [PostController::class, 'index'])->name('posts.index');
+        Route::get('posts/create', [PostController::class, 'create'])->name('posts.create');
+        Route::post('posts', [PostController::class, 'store'])->name('posts.store');
+        Route::get('posts/{post}/edit', [PostController::class, 'edit'])->name('posts.edit');
+        Route::put('posts/{post}', [PostController::class, 'update'])->name('posts.update');
+        Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
+
+        // Services catalog
+        Route::get('services', [ServiceController::class, 'index'])->name('services.index');
+        Route::get('services/create', [ServiceController::class, 'create'])->name('services.create');
+        Route::post('services', [ServiceController::class, 'store'])->name('services.store');
+        Route::get('services/{service}/edit', [ServiceController::class, 'edit'])->name('services.edit');
+        Route::put('services/{service}', [ServiceController::class, 'update'])->name('services.update');
+        Route::delete('services/{service}', [ServiceController::class, 'destroy'])->name('services.destroy');
     });
 });

@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/explore/presentation/explore_screen.dart';
 import '../../features/contracts/presentation/contracts_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/invoices/presentation/pay_screen.dart';
@@ -28,6 +29,7 @@ final router = GoRouter(
       builder: (context, state, child) => MainShell(child: child),
       routes: [
         GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
+        GoRoute(path: '/explore', builder: (_, __) => const ExploreScreen()),
         GoRoute(path: '/contracts', builder: (_, __) => const ContractsScreen()),
         GoRoute(path: '/invoices', builder: (_, __) => const InvoicesScreen()),
         GoRoute(path: '/invoices/pay/:invoiceId/:url', builder: (_, state) {

@@ -62,5 +62,10 @@
   "noPayments": "لا توجد مدفوعات",
   "noInvoices": "لا توجد فواتير",
   "noTickets": "لا توجد تذاكر دعم",
-  "noPendingFees": "لا توجد رسوم معلقة"
+  "noPendingFees": "لا توجد رسوم معلقة",
+  "explore": "استكشف",
+  "news": "الأخبار",
+  "ourServices": "خدماتنا",
+  "noNews": "لا توجد أخبار حالياً",
+  "noServices": "لا توجد خدمات حالياً"
 }
