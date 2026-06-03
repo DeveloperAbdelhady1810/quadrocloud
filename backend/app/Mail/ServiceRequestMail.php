@@ -18,7 +18,7 @@ class ServiceRequestMail extends Mailable
         public string $senderName,
         public string $senderEmail,
         public string $senderPhone,
-        public string $message,
+        public string $clientMessage,
     ) {}
 
     public function envelope(): Envelope

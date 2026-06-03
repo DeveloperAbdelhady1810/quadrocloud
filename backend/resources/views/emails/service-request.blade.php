@@ -18,7 +18,7 @@ body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:20px}
   <div class="field"><div class="label">الاسم</div><div class="value">{{ $senderName }}</div></div>
   <div class="field"><div class="label">البريد الإلكتروني</div><div class="value">{{ $senderEmail }}</div></div>
   <div class="field"><div class="label">رقم الهاتف</div><div class="value">{{ $senderPhone }}</div></div>
-  <div class="field"><div class="label">الرسالة</div><div class="value">{{ $message }}</div></div>
+  <div class="field"><div class="label">الرسالة</div><div class="value">{{ $clientMessage }}</div></div>
   <p style="text-align:center;color:#9ca3af;font-size:12px;margin-top:24px">Quadro Cloud — Client Portal</p>
 </div>
 </body></html>

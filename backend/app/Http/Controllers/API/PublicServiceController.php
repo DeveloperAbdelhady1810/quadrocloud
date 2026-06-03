@@ -37,15 +37,23 @@ class PublicServiceController extends Controller
         ]);
 
         $mail = new ServiceRequestMail(
-            serviceName:  $service->name,
-            senderName:   $data['name'],
-            senderEmail:  $data['email'],
-            senderPhone:  $data['phone'],
-            message:      $data['message'] ?? '',
+            serviceName:   $service->name,
+            senderName:    $data['name'],
+            senderEmail:   $data['email'],
+            senderPhone:   $data['phone'],
+            clientMessage: $data['message'] ?? '',
         );
 
-        Mail::to(['ahmedabdelhady@quadrocloud.net', 'abdelrahmansamy@quadrocloud.net'])
-            ->send($mail);
+        try {
+            Mail::to(['ahmedabdelhady@quadrocloud.net', 'abdelrahmansamy@quadrocloud.net'])
+                ->send($mail);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Service request mail failed', [
+                'service' => $service->id,
+                'error'   => $e->getMessage(),
+            ]);
+            // Still return success — the request was received even if mail failed
+        }
 
         return response()->json(['message' => 'تم إرسال طلبك بنجاح']);
     }
