@@ -25,8 +25,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 
-	<!-- ─── Google Sign-In URL Scheme ─────────────────────────────────────── -->
-	<!-- Replace REVERSED_CLIENT_ID with the value from your GoogleService-Info.plist -->
+	<!-- ─── Google Sign-In URL Scheme ─────────────────────────────────────────
+	     After enabling Google Sign-In in Firebase Auth and downloading the new
+	     GoogleService-Info.plist, add this block and replace the value with your
+	     REVERSED_CLIENT_ID (e.g. com.googleusercontent.apps.1091543058998-xxxxx):
+
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -34,10 +37,11 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>REPLACE_WITH_REVERSED_CLIENT_ID</string>
+				<string>YOUR_REVERSED_CLIENT_ID_HERE</string>
 			</array>
 		</dict>
 	</array>
+	─────────────────────────────────────────────────────────────────────────── -->
 
 	<!-- ─── Face ID / Biometrics ──────────────────────────────────────────── -->
 	<key>NSFaceIDUsageDescription</key>
