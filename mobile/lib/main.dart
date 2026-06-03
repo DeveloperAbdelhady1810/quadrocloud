@@ -15,16 +15,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await ApiClient().init();
-  await NotificationService.init();
   final savedLocale = await AppStorage.getLocale();
-  runApp(
-    ProviderScope(
-      overrides: [
-        localeProvider.overrideWith((ref) => Locale(savedLocale)),
-      ],
-      child: const QuadroCloudApp(),
-    ),
-  );
+
+  final container = ProviderContainer(overrides: [
+    localeProvider.overrideWith((ref) => Locale(savedLocale)),
+  ]);
+
+  // Pass container so notification taps can write to providers
+  await NotificationService.init(container: container);
+
+  runApp(UncontrolledProviderScope(container: container, child: const QuadroCloudApp()));
 }
 
 class QuadroCloudApp extends ConsumerWidget {
@@ -33,6 +33,15 @@ class QuadroCloudApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
+
+    // Navigate when a notification tap sets a pending route
+    ref.listen(notificationPendingRouteProvider, (_, route) {
+      if (route != null) {
+        router.go(route);
+        ref.read(notificationPendingRouteProvider.notifier).state = null;
+      }
+    });
+
     return MaterialApp.router(
       title: 'Quadro Cloud',
       debugShowCheckedModeBanner: false,

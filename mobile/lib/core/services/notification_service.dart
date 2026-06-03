@@ -1,34 +1,44 @@
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
 
+// ─── Deep-link state providers ────────────────────────────────────────────────
+
+/// Which explore tab to open: 0 = news, 1 = services
+final notificationExploreTabProvider = StateProvider<int>((ref) => 0);
+
+/// Service ID to highlight when opening the services tab
+final notificationHighlightServiceProvider = StateProvider<int?>((ref) => null);
+
+/// Pending route from a notification tap (set before navigation happens)
+final notificationPendingRouteProvider = StateProvider<String?>((ref) => null);
+
+// ─── Background handler (top-level, required by Firebase) ────────────────────
+
 @pragma('vm:entry-point')
-Future<void> _backgroundHandler(RemoteMessage message) async {
-  // Firebase is already initialized when this runs
-}
+Future<void> _backgroundHandler(RemoteMessage message) async {}
+
+// ─── Service ─────────────────────────────────────────────────────────────────
 
 class NotificationService {
   static final _fln = FlutterLocalNotificationsPlugin();
+  static const _channelId   = 'quadro_cloud_high';
+  static const _channelName = 'Quadro Cloud';
 
-  static const _androidChannelId = 'quadro_cloud_high';
-  static const _androidChannelName = 'Quadro Cloud';
+  static ProviderContainer? _container;
 
-  static Future<void> init() async {
+  /// Call once at app start, pass the ProviderContainer so we can write providers.
+  static Future<void> init({ProviderContainer? container}) async {
+    _container = container;
     FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
 
-    // Create Android high-importance channel
     if (Platform.isAndroid) {
       await _fln
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(
-            const AndroidNotificationChannel(
-              _androidChannelId,
-              _androidChannelName,
-              importance: Importance.high,
-            ),
-          );
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(const AndroidNotificationChannel(
+            _channelId, _channelName, importance: Importance.high));
     }
 
     await _fln.initialize(
@@ -42,25 +52,52 @@ class NotificationService {
       ),
     );
 
-    // Request permissions
     final settings = await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
+      alert: true, badge: true, sound: true, provisional: false,
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
-      // Show banner when app is in foreground
-      await FirebaseMessaging.instance
-          .setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: true, badge: true, sound: true,
       );
-
       FirebaseMessaging.onMessage.listen(_showLocal);
+    }
+
+    // App opened by tapping a notification (was in background/suspended)
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
+  }
+
+  /// Call after app fully loads to handle the case where the app was terminated.
+  static Future<void> checkInitialMessage() async {
+    final msg = await FirebaseMessaging.instance.getInitialMessage();
+    if (msg != null) _handleTap(msg);
+  }
+
+  static void _handleTap(RemoteMessage message) {
+    final action   = message.data['action']    as String?;
+    final actionId = message.data['action_id'] as String?;
+    final id       = actionId != null ? int.tryParse(actionId) : null;
+
+    switch (action) {
+      case 'service_detail':
+        _container?.read(notificationHighlightServiceProvider.notifier).state = id;
+        _container?.read(notificationExploreTabProvider.notifier).state = 1;
+        _container?.read(notificationPendingRouteProvider.notifier).state = '/explore';
+      case 'services':
+        _container?.read(notificationExploreTabProvider.notifier).state = 1;
+        _container?.read(notificationHighlightServiceProvider.notifier).state = null;
+        _container?.read(notificationPendingRouteProvider.notifier).state = '/explore';
+      case 'news':
+        _container?.read(notificationExploreTabProvider.notifier).state = 0;
+        _container?.read(notificationHighlightServiceProvider.notifier).state = null;
+        _container?.read(notificationPendingRouteProvider.notifier).state = '/explore';
+      case 'contracts':
+        _container?.read(notificationPendingRouteProvider.notifier).state = '/contracts';
+      case 'invoices':
+        _container?.read(notificationPendingRouteProvider.notifier).state = '/invoices';
+      default:
+        break;
     }
   }
 
@@ -68,38 +105,30 @@ class NotificationService {
     final n = message.notification;
     if (n == null) return;
     _fln.show(
-      n.hashCode,
-      n.title,
-      n.body,
+      n.hashCode, n.title, n.body,
       NotificationDetails(
         android: AndroidNotificationDetails(
-          _androidChannelId,
-          _androidChannelName,
+          _channelId, _channelName,
           importance: Importance.high,
           priority: Priority.high,
           icon: '@mipmap/ic_launcher',
         ),
         iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
+          presentAlert: true, presentBadge: true, presentSound: true,
         ),
       ),
     );
   }
 
-  /// Call after a successful login to register the FCM token with the backend.
   static Future<void> syncToken() async {
     try {
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
         await ApiClient().dio.put('/auth/fcm-token', data: {'fcm_token': token});
       }
-      // Keep token fresh
-      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-        try {
-          await ApiClient().dio.put('/auth/fcm-token', data: {'fcm_token': newToken});
-        } catch (_) {}
+      FirebaseMessaging.instance.onTokenRefresh.listen((t) async {
+        try { await ApiClient().dio.put('/auth/fcm-token', data: {'fcm_token': t}); }
+        catch (_) {}
       });
     } catch (_) {}
   }

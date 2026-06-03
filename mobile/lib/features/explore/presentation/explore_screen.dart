@@ -5,6 +5,7 @@ import '../data/explore_repository.dart';
 import '../data/post_model.dart';
 import '../data/service_model.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ExploreScreen extends ConsumerStatefulWidget {
@@ -20,6 +21,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTicker
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
+
+    // Jump to the tab requested by a notification tap
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final tabIndex = ref.read(notificationExploreTabProvider);
+      if (tabIndex != _tab.index) _tab.animateTo(tabIndex);
+    });
   }
 
   @override
@@ -31,6 +38,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
+
+    // React to future notification taps while screen is open
+    ref.listen(notificationExploreTabProvider, (_, tabIdx) {
+      if (_tab.index != tabIdx) _tab.animateTo(tabIdx);
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l.explore),
@@ -171,6 +184,7 @@ class _ServicesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final servicesAsync = ref.watch(servicesProvider);
+    final highlightId = ref.watch(notificationHighlightServiceProvider);
     return servicesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text(l.error)),
@@ -181,7 +195,11 @@ class _ServicesTab extends ConsumerWidget {
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: services.length,
-                itemBuilder: (_, i) => _AnimatedServiceCard(service: services[i], index: i),
+                itemBuilder: (_, i) => _AnimatedServiceCard(
+                  service: services[i],
+                  index: i,
+                  highlighted: highlightId == services[i].id,
+                ),
               ),
             ),
     );
@@ -191,30 +209,51 @@ class _ServicesTab extends ConsumerWidget {
 class _AnimatedServiceCard extends StatefulWidget {
   final ServiceModel service;
   final int index;
-  const _AnimatedServiceCard({required this.service, required this.index});
+  final bool highlighted;
+  const _AnimatedServiceCard({required this.service, required this.index, this.highlighted = false});
   @override
   State<_AnimatedServiceCard> createState() => _AnimatedServiceCardState();
 }
 
-class _AnimatedServiceCardState extends State<_AnimatedServiceCard> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
+class _AnimatedServiceCardState extends State<_AnimatedServiceCard>
+    with TickerProviderStateMixin {
+  late AnimationController _fadeCtrl;
+  late AnimationController _pulseCtrl;
   late Animation<double> _fade;
   late Animation<Offset> _slide;
+  late Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _fade  = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _slide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+        .animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut));
+
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+    _pulse = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.03), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.03, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+
     Future.delayed(Duration(milliseconds: widget.index * 80), () {
-      if (mounted) _ctrl.forward();
+      if (mounted) _fadeCtrl.forward();
     });
+
+    if (widget.highlighted) {
+      Future.delayed(Duration(milliseconds: widget.index * 80 + 600), () {
+        if (mounted) _pulseCtrl.repeat(count: 3);
+      });
+    }
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _fadeCtrl.dispose();
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +261,10 @@ class _AnimatedServiceCardState extends State<_AnimatedServiceCard> with SingleT
       opacity: _fade,
       child: SlideTransition(
         position: _slide,
-        child: _ServiceCard(service: widget.service),
+        child: ScaleTransition(
+          scale: _pulse,
+          child: _ServiceCard(service: widget.service, highlighted: widget.highlighted),
+        ),
       ),
     );
   }
@@ -230,7 +272,8 @@ class _AnimatedServiceCardState extends State<_AnimatedServiceCard> with SingleT
 
 class _ServiceCard extends StatelessWidget {
   final ServiceModel service;
-  const _ServiceCard({required this.service});
+  final bool highlighted;
+  const _ServiceCard({required this.service, this.highlighted = false});
 
   void _showRequestDialog(BuildContext context) {
     showModalBottomSheet(
@@ -248,7 +291,15 @@ class _ServiceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
+        border: highlighted
+            ? Border.all(color: AppTheme.primary, width: 2.5)
+            : null,
+        boxShadow: [
+          if (highlighted)
+            BoxShadow(color: AppTheme.primary.withValues(alpha: 0.25), blurRadius: 20, spreadRadius: 2)
+          else
+            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),

@@ -11,6 +11,7 @@ use App\Http\Controllers\Dashboard\TicketController;
 use App\Http\Controllers\Dashboard\TeamController;
 use App\Http\Controllers\Dashboard\PostController;
 use App\Http\Controllers\Dashboard\ServiceController;
+use App\Http\Controllers\Dashboard\NotificationController;
 
 Route::get('/', fn() => redirect()->route('dashboard.login'));
 
@@ -65,6 +66,10 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
         Route::get('tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
         Route::post('tickets/{ticket}/reply', [TicketController::class, 'reply'])->name('tickets.reply');
         Route::post('tickets/{ticket}/status', [TicketController::class, 'updateStatus'])->name('tickets.status');
+
+        // Bulk notifications
+        Route::get('notifications/send', [NotificationController::class, 'create'])->name('notifications.create');
+        Route::post('notifications/send', [NotificationController::class, 'send'])->name('notifications.send');
 
         // Team management
         Route::get('team', [TeamController::class, 'index'])->name('team.index');
