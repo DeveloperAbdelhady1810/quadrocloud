@@ -29,6 +29,7 @@
 	     After enabling Google Sign-In in Firebase Auth and downloading the new
 	     GoogleService-Info.plist, add this block and replace the value with your
 	     REVERSED_CLIENT_ID (e.g. com.googleusercontent.apps.1091543058998-xxxxx):
+	─────────────────────────────────────────────────────────────────────────── -->
 
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -37,11 +38,10 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>YOUR_REVERSED_CLIENT_ID_HERE</string>
+				<string>com.googleusercontent.apps.1091543058998-te26k8s6d2ielbh4g00fofqib201jl5g</string>
 			</array>
 		</dict>
 	</array>
-	─────────────────────────────────────────────────────────────────────────── -->
 
 	<!-- ─── Face ID / Biometrics ──────────────────────────────────────────── -->
 	<key>NSFaceIDUsageDescription</key>
