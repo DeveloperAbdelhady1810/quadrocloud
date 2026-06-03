@@ -30,7 +30,7 @@ class FeeController extends Controller
             'id'                  => $f->id,
             'title'               => $f->title,
             'description'         => $f->description,
-            'amount'              => $f->amount,
+            'amount'              => (float) $f->amount,
             'due_date'            => $f->due_date?->format('Y-m-d'),
             'acceptance_deadline' => $f->acceptance_deadline?->format('Y-m-d'),
             'status'              => $f->status,

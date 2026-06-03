@@ -30,7 +30,7 @@ class DashboardController extends Controller
             ->map(fn($f) => [
                 'id'                  => $f->id,
                 'title'               => $f->title,
-                'amount'              => $f->amount,
+                'amount'              => (float) $f->amount,
                 'due_date'            => $f->due_date?->format('Y-m-d'),
                 'acceptance_deadline' => $f->acceptance_deadline?->format('Y-m-d'),
                 'days_until_due'      => now()->diffInDays($f->due_date, false),
@@ -46,7 +46,7 @@ class DashboardController extends Controller
             'next_invoice'     => $nextInvoice ? [
                 'id'             => $nextInvoice->id,
                 'invoice_number' => $nextInvoice->invoice_number,
-                'amount'         => $nextInvoice->amount,
+                'amount'         => (float) $nextInvoice->amount,
                 'due_date'       => $nextInvoice->due_date?->format('Y-m-d'),
                 'days_until_due' => $daysUntilNext,
             ] : null,

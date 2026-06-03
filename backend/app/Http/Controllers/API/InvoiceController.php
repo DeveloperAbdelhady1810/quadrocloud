@@ -16,7 +16,7 @@ class InvoiceController extends Controller
             ->map(fn($i) => [
                 'id'             => $i->id,
                 'invoice_number' => $i->invoice_number,
-                'amount'         => $i->amount,
+                'amount'         => (float) $i->amount,
                 'status'         => $i->status,
                 'due_date'       => $i->due_date?->format('Y-m-d'),
                 'paid_at'        => $i->paid_at?->format('Y-m-d H:i'),

@@ -17,7 +17,7 @@ class PaymentController extends Controller
             ->map(fn($p) => [
                 'id'             => $p->id,
                 'invoice_number' => $p->invoice?->invoice_number,
-                'amount'         => $p->amount,
+                'amount'         => (float) $p->amount,
                 'method'         => $p->method,
                 'status'         => $p->status,
                 'paid_at'        => $p->paid_at?->format('Y-m-d H:i'),
@@ -32,7 +32,7 @@ class PaymentController extends Controller
         return response()->json([
             'id'                      => $payment->id,
             'invoice_number'          => $payment->invoice?->invoice_number,
-            'amount'                  => $payment->amount,
+            'amount'                  => (float) $payment->amount,
             'method'                  => $payment->method,
             'status'                  => $payment->status,
             'paymob_transaction_id'   => $payment->paymob_transaction_id,

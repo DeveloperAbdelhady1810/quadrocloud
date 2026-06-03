@@ -56,7 +56,7 @@ class FcmService
                             ],
                         ],
                     ],
-                    'data' => array_map('strval', $data),
+                    'data' => empty($data) ? new \stdClass() : array_map('strval', $data),
                 ],
             ]);
 
