@@ -78,10 +78,16 @@ class PaymobService
             'expiration'        => $this->expiration,
         ];
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Token ' . $this->secretKey,
-            'Content-Type'  => 'application/json',
-        ])->post($this->baseUrl . '/v1/intention/', $body);
+        $response = Http::withOptions([
+                // Disable SSL verification on local dev (Windows lacks a CA bundle).
+                // On production this must be true — set APP_ENV=production to enable.
+                'verify' => app()->isProduction(),
+            ])
+            ->timeout(30)
+            ->withHeaders([
+                'Authorization' => 'Token ' . $this->secretKey,
+                'Content-Type'  => 'application/json',
+            ])->post($this->baseUrl . '/v1/intention/', $body);
 
         if (!$response->successful()) {
             Log::error('Paymob intention failed', ['response' => $response->body(), 'invoice' => $invoice->id]);

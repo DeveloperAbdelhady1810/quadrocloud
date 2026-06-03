@@ -76,7 +76,7 @@ class SocialAuthController extends Controller
 
     private function verifyGoogle(string $idToken): array
     {
-        $res = Http::timeout(10)->get('https://oauth2.googleapis.com/tokeninfo', [
+        $res = Http::withOptions(['verify' => app()->isProduction()])->timeout(10)->get('https://oauth2.googleapis.com/tokeninfo', [
             'id_token' => $idToken,
         ]);
 

@@ -124,7 +124,7 @@ class FcmService
             'exp'   => $now + 3600,
         ]);
 
-        $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
+        $response = Http::withOptions(['verify' => app()->isProduction()])->asForm()->post('https://oauth2.googleapis.com/token', [
             'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             'assertion'  => $jwt,
         ]);
