@@ -51,7 +51,8 @@
                         <div class="text-xs text-gray-500 mt-0.5">إذا أوقفته، سيُحفظ كمسودة ولن يظهر في التطبيق</div>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="is_published" value="1" class="sr-only peer" {{ old('is_published') ? 'checked' : 'checked' }}>
+                        <input type="hidden" name="is_published" value="0">
+                        <input type="checkbox" name="is_published" value="1" class="sr-only peer" {{ old('is_published', true) ? 'checked' : '' }}>
                         <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full"></div>
                     </label>
                 </div>

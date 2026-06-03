@@ -62,6 +62,7 @@
                             <div class="text-xs text-gray-500 mt-0.5">إذا أوقفته، يُخفى السعر ويظهر زر "طلب الخدمة" فقط</div>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="hidden" name="show_price" value="0">
                             <input type="checkbox" name="show_price" value="1" class="sr-only peer"
                                 {{ old('show_price', $service->show_price) ? 'checked' : '' }}>
                             <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full"></div>
@@ -74,6 +75,7 @@
                             <div class="text-xs text-gray-500 mt-0.5">يُتيح للعملاء رؤية الخدمة والطلب عليها</div>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="hidden" name="is_public" value="0">
                             <input type="checkbox" name="is_public" value="1" class="sr-only peer"
                                 {{ old('is_public', $service->is_public) ? 'checked' : '' }}>
                             <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full"></div>
@@ -86,6 +88,7 @@
                             <div class="text-xs text-gray-500 mt-0.5">يظهر في قائمة الخدمات عند إضافة عقد جديد</div>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="hidden" name="is_active" value="0">
                             <input type="checkbox" name="is_active" value="1" class="sr-only peer"
                                 {{ old('is_active', $service->is_active) ? 'checked' : '' }}>
                             <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full"></div>
