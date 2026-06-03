@@ -12,7 +12,6 @@ class MainShell extends StatelessWidget {
     if (loc.startsWith('/contracts')) return 2;
     if (loc.startsWith('/invoices') || loc.startsWith('/payments')) return 3;
     if (loc.startsWith('/tickets')) return 4;
-    if (loc.startsWith('/settings')) return 5;
     return 0;
   }
 
@@ -31,7 +30,6 @@ class MainShell extends StatelessWidget {
             case 2: context.go('/contracts'); break;
             case 3: context.go('/invoices'); break;
             case 4: context.go('/tickets'); break;
-            case 5: context.go('/settings'); break;
           }
         },
         destinations: [
@@ -40,7 +38,6 @@ class MainShell extends StatelessWidget {
           NavigationDestination(icon: const Icon(Icons.description_outlined), selectedIcon: const Icon(Icons.description), label: l.contracts),
           NavigationDestination(icon: const Icon(Icons.receipt_outlined), selectedIcon: const Icon(Icons.receipt), label: l.invoices),
           NavigationDestination(icon: const Icon(Icons.headset_mic_outlined), selectedIcon: const Icon(Icons.headset_mic), label: l.support),
-          NavigationDestination(icon: const Icon(Icons.settings_outlined), selectedIcon: const Icon(Icons.settings), label: l.settings),
         ],
       ),
     );

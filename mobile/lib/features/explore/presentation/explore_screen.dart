@@ -79,7 +79,23 @@ class _NewsTab extends ConsumerWidget {
     final postsAsync = ref.watch(postsProvider);
     return postsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text(l.error)),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(l.error, style: const TextStyle(color: Colors.grey)),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => ref.invalidate(postsProvider),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: Text(l.retry),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+            ),
+          ],
+        ),
+      ),
       data: (posts) => posts.isEmpty
           ? Center(child: Text(l.noNews, style: const TextStyle(color: Colors.grey)))
           : RefreshIndicator(
@@ -187,7 +203,23 @@ class _ServicesTab extends ConsumerWidget {
     final highlightId = ref.watch(notificationHighlightServiceProvider);
     return servicesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text(l.error)),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(l.error, style: const TextStyle(color: Colors.grey)),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => ref.invalidate(servicesProvider),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: Text(l.retry),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+            ),
+          ],
+        ),
+      ),
       data: (services) => services.isEmpty
           ? Center(child: Text(l.noServices, style: const TextStyle(color: Colors.grey)))
           : RefreshIndicator(

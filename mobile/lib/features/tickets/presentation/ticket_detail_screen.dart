@@ -50,7 +50,23 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       ),
       body: ticketAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text(l.error)),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(l.error, style: const TextStyle(color: Colors.grey)),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => ref.invalidate(ticketDetailProvider(widget.ticketId)),
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(l.retry),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+              ),
+            ],
+          ),
+        ),
         data: (ticket) => Column(children: [
           // Header
           Container(

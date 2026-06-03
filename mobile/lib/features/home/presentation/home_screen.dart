@@ -18,23 +18,36 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Quadro Cloud'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: l.retry,
             onPressed: () => ref.invalidate(dashboardProvider),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: l.settings,
+            onPressed: () => context.go('/settings'),
           ),
         ],
       ),
       body: dashAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(l.error, style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 12),
-            ElevatedButton(onPressed: () => ref.invalidate(dashboardProvider), child: Text(l.retry)),
-          ],
-        )),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(l.error, style: const TextStyle(color: Colors.grey)),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () => ref.invalidate(dashboardProvider),
+                icon: const Icon(Icons.refresh, size: 18),
+                label: Text(l.retry),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
+              ),
+            ],
+          ),
+        ),
         data: (data) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(dashboardProvider),
           child: SingleChildScrollView(
@@ -58,14 +71,15 @@ class HomeScreen extends ConsumerWidget {
 
                 // Pending additional fees
                 if (data.pendingFees.isNotEmpty) ...[
-                  Text(l.pendingFees,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  _SectionHeader(icon: Icons.schedule_rounded, title: l.pendingFees),
                   const SizedBox(height: 12),
                   ...data.pendingFees.map((fee) => _PendingFeeCard(fee: fee)),
                   const SizedBox(height: 20),
                 ],
 
                 // Quick action grid
+                _SectionHeader(icon: Icons.apps_rounded, title: 'الوصول السريع'),
+                const SizedBox(height: 12),
                 _QuickActions(),
               ],
             ),
@@ -73,6 +87,29 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  const _SectionHeader({required this.icon, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: AppTheme.primary),
+      ),
+      const SizedBox(width: 10),
+      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+    ]);
   }
 }
 
@@ -128,8 +165,8 @@ class _NextPaymentCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [const Color(0xFF4F46E5), const Color(0xFF6366F1)],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
           begin: Alignment.topLeft, end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),

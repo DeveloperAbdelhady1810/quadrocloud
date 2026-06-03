@@ -35,7 +35,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         content: const Text('هل أنت متأكد من تسجيل الخروج؟'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger), child: const Text('خروج')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            child: const Text('خروج'),
+          ),
         ],
       ),
     );
@@ -51,7 +55,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await AppStorage.setLocale(locale);
     ref.read(_localeProvider.notifier).state = locale;
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أعد تشغيل التطبيق لتفعيل اللغة')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أعد تشغيل التطبيق لتفعيل اللغة')),
+      );
     }
   }
 
@@ -67,27 +73,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           _SectionHeader(title: l.changeLanguage),
           _SettingCard(
-            child: RadioGroup<String>(
-              groupValue: locale,
-              onChanged: (v) { if (v != null) _changeLocale(v); },
-              child: Column(children: [
-                RadioListTile<String>(
-                  value: 'ar',
-                  title: const Text('العربية'),
-                ),
-                RadioListTile<String>(
-                  value: 'en',
-                  title: const Text('English'),
-                ),
-              ]),
-            ),
+            child: Column(children: [
+              RadioListTile<String>(
+                value: 'ar',
+                groupValue: locale,
+                onChanged: (v) { if (v != null) _changeLocale(v); },
+                title: const Text('العربية'),
+                activeColor: AppTheme.primary,
+              ),
+              RadioListTile<String>(
+                value: 'en',
+                groupValue: locale,
+                onChanged: (v) { if (v != null) _changeLocale(v); },
+                title: const Text('English'),
+                activeColor: AppTheme.primary,
+              ),
+            ]),
           ),
           const SizedBox(height: 16),
 
           _SectionHeader(title: l.changePassword),
-          _SettingCard(
-            child: _ChangePasswordForm(),
-          ),
+          _SettingCard(child: _ChangePasswordForm()),
           const SizedBox(height: 24),
 
           ElevatedButton.icon(
@@ -96,6 +102,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             label: Text(l.logout),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -109,8 +116,11 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, right: 4),
-      child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.primary, fontSize: 13)),
+      padding: const EdgeInsets.only(bottom: 8, right: 4, left: 4),
+      child: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.primary, fontSize: 13),
+      ),
     );
   }
 }
@@ -142,6 +152,15 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
   final _newCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
+  bool _obscureCurrent = true;
+  bool _obscureNew = true;
+
+  @override
+  void dispose() {
+    _currentCtrl.dispose();
+    _newCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -150,11 +169,15 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
       await ref.read(authRepositoryProvider).changePassword(_currentCtrl.text, _newCtrl.text);
       _currentCtrl.clear();
       _newCtrl.clear();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير كلمة المرور')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير كلمة المرور')));
+      }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('كلمة المرور الحالية غير صحيحة')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('كلمة المرور الحالية غير صحيحة')));
+      }
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -168,15 +191,29 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
         child: Column(children: [
           TextFormField(
             controller: _currentCtrl,
-            obscureText: true,
-            decoration: InputDecoration(labelText: l.currentPassword),
+            obscureText: _obscureCurrent,
+            decoration: InputDecoration(
+              labelText: l.currentPassword,
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(_obscureCurrent ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
+              ),
+            ),
             validator: (v) => v?.isEmpty == true ? 'مطلوب' : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _newCtrl,
-            obscureText: true,
-            decoration: InputDecoration(labelText: l.newPassword),
+            obscureText: _obscureNew,
+            decoration: InputDecoration(
+              labelText: l.newPassword,
+              prefixIcon: const Icon(Icons.lock_reset_outlined),
+              suffixIcon: IconButton(
+                icon: Icon(_obscureNew ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                onPressed: () => setState(() => _obscureNew = !_obscureNew),
+              ),
+            ),
             validator: (v) => v != null && v.length < 8 ? 'لا يقل عن 8 أحرف' : null,
           ),
           const SizedBox(height: 16),
