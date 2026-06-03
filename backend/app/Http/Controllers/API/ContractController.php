@@ -7,26 +7,47 @@ use Illuminate\Http\Request;
 
 class ContractController extends Controller
 {
+    // Paymob processing fee added on top of invoice amount (EGP)
+    public const PAYMOB_FEE = 5;
+
     public function index(Request $request)
     {
         $contracts = $request->user()
             ->contracts()
-            ->with('service')
+            ->with([
+                'service',
+                'invoices' => fn($q) => $q->whereIn('status', ['unpaid', 'overdue'])
+                                          ->orderByDesc('created_at'),
+            ])
             ->where('status', 'active')
             ->get()
-            ->map(fn($c) => [
-                'id'             => $c->id,
-                'name'           => $c->display_name,
-                'price'          => (float) $c->price,
-                'billing_cycle'  => $c->billing_cycle,
-                'next_due_date'  => $c->next_due_date?->format('Y-m-d'),
-                'days_until_due' => $c->next_due_date
+            ->map(function ($c) {
+                $daysUntilDue  = $c->next_due_date
                     ? (int) now()->startOfDay()->diffInDays($c->next_due_date, false)
-                    : 0,
-                'start_date'     => $c->start_date?->format('Y-m-d'),
-                'end_date'       => $c->end_date?->format('Y-m-d'),
-                'status'         => $c->status,
-            ]);
+                    : 0;
+
+                $unpaidInvoice = $c->invoices->first();
+
+                // Show Pay when due within 5 days OR overdue (regardless of grace period)
+                $showPay = $daysUntilDue <= 5 && $unpaidInvoice !== null;
+
+                return [
+                    'id'                => $c->id,
+                    'name'              => $c->display_name,
+                    'price'             => (float) $c->price,
+                    'billing_cycle'     => $c->billing_cycle,
+                    'next_due_date'     => $c->next_due_date?->format('Y-m-d'),
+                    'days_until_due'    => $daysUntilDue,
+                    'grace_period_days' => $c->grace_period_days,
+                    'start_date'        => $c->start_date?->format('Y-m-d'),
+                    'end_date'          => $c->end_date?->format('Y-m-d'),
+                    'status'            => $c->status,
+                    'unpaid_invoice_id' => $showPay ? $unpaidInvoice->id : null,
+                    'payable_amount'    => $showPay
+                        ? ((float) $unpaidInvoice->amount + self::PAYMOB_FEE)
+                        : null,
+                ];
+            });
 
         return response()->json($contracts);
     }

@@ -27,23 +27,36 @@ class PaymobService
         $this->expiration     = config('paymob.expiration');
     }
 
+    // Fixed Paymob processing fee in EGP (500 piastres)
+    private const TRANSACTION_FEE_CENTS = 500;
+
     public function createPaymentIntent(Invoice $invoice): array
     {
-        $client    = $invoice->client;
-        $amountCents = (int) ($invoice->amount * 100);
-        $reference = $client->email . '-INV' . $invoice->id . '-' . strtoupper(uniqid());
+        $client       = $invoice->client;
+        $invoiceCents = (int) ($invoice->amount * 100);
+        $totalCents   = $invoiceCents + self::TRANSACTION_FEE_CENTS;
+        $reference    = $client->email . '-INV' . $invoice->id . '-' . strtoupper(uniqid());
 
         $body = [
-            'amount'          => $amountCents,
+            'amount'          => $totalCents,
             'currency'        => 'EGP',
             'payment_methods' => $this->paymentMethods,
-            'items'           => [[
-                'name'        => 'Invoice #' . $invoice->invoice_number,
-                'amount'      => $amountCents,
-                'description' => 'Quadro Cloud Service Fee',
-                'quantity'    => 1,
-                'id'          => (string) $invoice->id,
-            ]],
+            'items'           => [
+                [
+                    'name'        => 'Invoice #' . $invoice->invoice_number,
+                    'amount'      => $invoiceCents,
+                    'description' => 'Quadro Cloud Service Fee',
+                    'quantity'    => 1,
+                    'id'          => (string) $invoice->id,
+                ],
+                [
+                    'name'        => 'Paymob Transaction Fee',
+                    'amount'      => self::TRANSACTION_FEE_CENTS,
+                    'description' => 'Online payment processing fee',
+                    'quantity'    => 1,
+                    'id'          => 'fee-' . $invoice->id,
+                ],
+            ],
             'billing_data' => [
                 'apartment'    => $client->address ?? 'NA',
                 'first_name'   => explode(' ', $client->name)[0],
@@ -79,12 +92,12 @@ class PaymobService
         $paymentUrl   = $this->baseUrl . '/unifiedcheckout/?publicKey=' . $this->publicKey . '&clientSecret=' . $clientSecret;
 
         Payment::create([
-            'invoice_id'         => $invoice->id,
-            'client_id'          => $client->id,
-            'amount'             => $invoice->amount,
-            'method'             => 'paymob',
-            'special_reference'  => $reference,
-            'status'             => 'pending',
+            'invoice_id'        => $invoice->id,
+            'client_id'         => $client->id,
+            'amount'            => $invoice->amount + (self::TRANSACTION_FEE_CENTS / 100),
+            'method'            => 'paymob',
+            'special_reference' => $reference,
+            'status'            => 'pending',
         ]);
 
         return [

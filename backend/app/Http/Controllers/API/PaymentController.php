@@ -44,7 +44,9 @@ class PaymentController extends Controller
     {
         $request->validate(['invoice_id' => 'required|integer']);
 
-        $invoice = $request->user()->invoices()->where('status', 'unpaid')->findOrFail($request->invoice_id);
+        $invoice = $request->user()->invoices()
+            ->whereIn('status', ['unpaid', 'overdue'])
+            ->findOrFail($request->invoice_id);
 
         $paymob = app(\App\Services\PaymobService::class);
         $result = $paymob->createPaymentIntent($invoice);
