@@ -4,6 +4,7 @@ import 'package:quadro_cloud/gen_l10n/app_localizations.dart';
 import '../data/explore_repository.dart';
 import '../data/post_model.dart';
 import '../data/service_model.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ExploreScreen extends ConsumerStatefulWidget {
@@ -137,7 +138,7 @@ class _PostCard extends StatelessWidget {
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: Image.network(
-              'http://10.0.2.2:8000/storage/${post.mediaPath}',
+              '${AppConstants.storageUrl}/${post.mediaPath}',
               height: 180, width: double.infinity, fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => const SizedBox(),
             ),
