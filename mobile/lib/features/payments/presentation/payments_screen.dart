@@ -4,6 +4,7 @@ import 'package:quadro_cloud/gen_l10n/app_localizations.dart';
 import '../data/payment_repository.dart';
 import '../data/payment_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_widgets.dart';
 
 class PaymentsScreen extends ConsumerWidget {
   const PaymentsScreen({super.key});
@@ -16,36 +17,23 @@ class PaymentsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l.paymentHistory)),
       body: paymentsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text(l.error, style: const TextStyle(color: Colors.grey)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => ref.invalidate(paymentsProvider),
-                icon: const Icon(Icons.refresh, size: 18),
-                label: Text(l.retry),
-                style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
-              ),
-            ],
-          ),
+        loading: () => const ShimmerList(count: 6),
+        error: (e, _) => ErrorState(
+          message: l.error,
+          onRetry: () => ref.invalidate(paymentsProvider),
+          retryLabel: l.retry,
         ),
         data: (payments) => payments.isEmpty
-            ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.payment_outlined, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                Text(l.noPayments, style: const TextStyle(color: Colors.grey)),
-              ]))
+            ? EmptyState(icon: Icons.payment_outlined, message: l.noPayments)
             : RefreshIndicator(
                 onRefresh: () async => ref.invalidate(paymentsProvider),
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: payments.length,
-                  itemBuilder: (_, i) => _PaymentCard(payment: payments[i]),
+                  itemBuilder: (_, i) => AnimatedListItem(
+                    index: i,
+                    child: _PaymentCard(payment: payments[i], isLast: i == payments.length - 1),
+                  ),
                 ),
               ),
       ),
@@ -55,12 +43,14 @@ class PaymentsScreen extends ConsumerWidget {
 
 class _PaymentCard extends StatelessWidget {
   final PaymentModel payment;
-  const _PaymentCard({required this.payment});
+  final bool isLast;
+  const _PaymentCard({required this.payment, this.isLast = false});
 
   @override
   Widget build(BuildContext context) {
     final isSuccess = payment.status == 'success';
     final isCash = payment.method == 'cash';
+    final color = isSuccess ? AppTheme.success : AppTheme.danger;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -68,33 +58,55 @@ class _PaymentCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(children: [
+        // Icon
         Container(
-          width: 44, height: 44,
+          width: 46, height: 46,
           decoration: BoxDecoration(
-            color: isSuccess ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.danger.withValues(alpha: 0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
-            isCash ? Icons.money : Icons.credit_card,
-            color: isSuccess ? AppTheme.success : AppTheme.danger,
+            isCash ? Icons.money_rounded : Icons.credit_card_rounded,
+            color: color,
+            size: 22,
           ),
         ),
         const SizedBox(width: 14),
+
+        // Info
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(payment.invoiceNumber ?? 'دفعة', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          Text(isCash ? 'نقدي' : 'Paymob', style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+          Text(
+            payment.invoiceNumber ?? 'دفعة',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary),
+          ),
+          const SizedBox(height: 4),
+          Row(children: [
+            Container(
+              width: 7, height: 7,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              isCash ? 'نقدي' : 'Paymob',
+              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            ),
+          ]),
         ])),
+
+        // Amount + date
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('${payment.amount.toStringAsFixed(0)} ج.م',
-              style: TextStyle(
-                fontWeight: FontWeight.w800, fontSize: 16,
-                color: isSuccess ? AppTheme.success : AppTheme.danger,
-              )),
-          Text(payment.paidAt?.substring(0, 10) ?? '',
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
+          Text(
+            '${payment.amount.toStringAsFixed(0)} ج.م',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: color),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            payment.paidAt?.substring(0, 10) ?? '',
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+          ),
         ]),
       ]),
     );

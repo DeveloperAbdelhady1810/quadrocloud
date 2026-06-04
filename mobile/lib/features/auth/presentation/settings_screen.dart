@@ -69,42 +69,122 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l.settings)),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
+
+          // ── Profile section ──────────────────────────────────────────────
+          _ProfileCard(),
+          const SizedBox(height: 24),
+
+          // ── Language ─────────────────────────────────────────────────────
           _SectionHeader(title: l.changeLanguage),
           _SettingCard(
-            child: Column(children: [
-              RadioListTile<String>(
-                value: 'ar',
-                groupValue: locale,
-                onChanged: (v) { if (v != null) _changeLocale(v); },
-                title: const Text('العربية'),
-                activeColor: AppTheme.primary,
-              ),
-              RadioListTile<String>(
-                value: 'en',
-                groupValue: locale,
-                onChanged: (v) { if (v != null) _changeLocale(v); },
-                title: const Text('English'),
-                activeColor: AppTheme.primary,
-              ),
-            ]),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('اختر اللغة المفضلة', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                const SizedBox(height: 12),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment<String>(
+                      value: 'ar',
+                      label: Text('العربية'),
+                      icon: Icon(Icons.language, size: 16),
+                    ),
+                    ButtonSegment<String>(
+                      value: 'en',
+                      label: Text('English'),
+                      icon: Icon(Icons.language, size: 16),
+                    ),
+                  ],
+                  selected: {locale},
+                  onSelectionChanged: (values) => _changeLocale(values.first),
+                  style: ButtonStyle(
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ]),
+            ),
           ),
           const SizedBox(height: 16),
 
+          // ── Change password ───────────────────────────────────────────────
           _SectionHeader(title: l.changePassword),
           _SettingCard(child: _ChangePasswordForm()),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
-          ElevatedButton.icon(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
-            label: Text(l.logout),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+          // ── Logout ────────────────────────────────────────────────────────
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.danger.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.danger.withValues(alpha: 0.2)),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: _logout,
+                borderRadius: BorderRadius.circular(14),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.logout_rounded, color: AppTheme.danger, size: 20),
+                    const SizedBox(width: 10),
+                    Text(l.logout, style: const TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w700, fontSize: 15)),
+                  ]),
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+}
+
+class _ProfileCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4338CA), Color(0xFF4F46E5), Color(0xFF6366F1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.35), blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: Row(children: [
+        Container(
+          width: 56, height: 56,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 2),
+          ),
+          child: const Icon(Icons.person_outline_rounded, color: Colors.white, size: 28),
+        ),
+        const SizedBox(width: 16),
+        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Client Portal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+          SizedBox(height: 4),
+          Text('Quadro Cloud', style: TextStyle(color: Colors.white60, fontSize: 13)),
+        ])),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+          ),
+          child: const Text('نشط', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+        ),
+      ]),
     );
   }
 }
@@ -135,7 +215,7 @@ class _SettingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2))],
       ),
       child: child,
     );
@@ -169,13 +249,9 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
       await ref.read(authRepositoryProvider).changePassword(_currentCtrl.text, _newCtrl.text);
       _currentCtrl.clear();
       _newCtrl.clear();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير كلمة المرور')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تغيير كلمة المرور')));
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('كلمة المرور الحالية غير صحيحة')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('كلمة المرور الحالية غير صحيحة')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -194,7 +270,7 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
             obscureText: _obscureCurrent,
             decoration: InputDecoration(
               labelText: l.currentPassword,
-              prefixIcon: const Icon(Icons.lock_outline),
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
               suffixIcon: IconButton(
                 icon: Icon(_obscureCurrent ? Icons.visibility_outlined : Icons.visibility_off_outlined),
                 onPressed: () => setState(() => _obscureCurrent = !_obscureCurrent),
@@ -221,7 +297,7 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _loading ? null : _submit,
-              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 44)),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 46)),
               child: _loading
                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : Text(l.save),

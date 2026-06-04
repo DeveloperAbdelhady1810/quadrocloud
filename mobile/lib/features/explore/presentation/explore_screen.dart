@@ -7,6 +7,7 @@ import '../data/service_model.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_widgets.dart';
 
 class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({super.key});
@@ -14,15 +15,14 @@ class ExploreScreen extends ConsumerStatefulWidget {
   ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTickerProviderStateMixin {
+class _ExploreScreenState extends ConsumerState<ExploreScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tab;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
-
-    // Jump to the tab requested by a notification tap
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final tabIndex = ref.read(notificationExploreTabProvider);
       if (tabIndex != _tab.index) _tab.animateTo(tabIndex);
@@ -38,8 +38,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-
-    // React to future notification taps while screen is open
     ref.listen(notificationExploreTabProvider, (_, tabIdx) {
       if (_tab.index != tabIdx) _tab.animateTo(tabIdx);
     });
@@ -49,9 +47,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTicker
         title: Text(l.explore),
         bottom: TabBar(
           controller: _tab,
-          indicatorColor: AppTheme.primary,
-          labelColor: AppTheme.primary,
-          unselectedLabelColor: Colors.grey,
           tabs: [
             Tab(icon: const Icon(Icons.newspaper_outlined), text: l.news),
             Tab(icon: const Icon(Icons.grid_view_rounded), text: l.ourServices),
@@ -60,92 +55,41 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTicker
       ),
       body: TabBarView(
         controller: _tab,
-        children: const [
-          _NewsTab(),
-          _ServicesTab(),
-        ],
+        children: const [_NewsTab(), _ServicesTab()],
       ),
     );
   }
 }
 
-// ─── News Tab ────────────────────────────────────────────────────────────────
+// ─── News Tab ─────────────────────────────────────────────────────────────────
 
 class _NewsTab extends ConsumerWidget {
   const _NewsTab();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final postsAsync = ref.watch(postsProvider);
     return postsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(l.error, style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => ref.invalidate(postsProvider),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: Text(l.retry),
-              style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
-            ),
-          ],
-        ),
+      loading: () => const ShimmerPostList(count: 4),
+      error: (e, _) => ErrorState(
+        message: l.error,
+        onRetry: () => ref.invalidate(postsProvider),
+        retryLabel: l.retry,
       ),
       data: (posts) => posts.isEmpty
-          ? Center(child: Text(l.noNews, style: const TextStyle(color: Colors.grey)))
+          ? EmptyState(icon: Icons.newspaper_outlined, message: l.noNews)
           : RefreshIndicator(
               onRefresh: () async => ref.invalidate(postsProvider),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: posts.length,
-                itemBuilder: (_, i) => _AnimatedPostCard(post: posts[i], index: i),
+                itemBuilder: (_, i) => AnimatedListItem(
+                  index: i,
+                  child: _PostCard(post: posts[i]),
+                ),
               ),
             ),
-    );
-  }
-}
-
-class _AnimatedPostCard extends StatefulWidget {
-  final PostModel post;
-  final int index;
-  const _AnimatedPostCard({required this.post, required this.index});
-  @override
-  State<_AnimatedPostCard> createState() => _AnimatedPostCardState();
-}
-
-class _AnimatedPostCardState extends State<_AnimatedPostCard> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
-    Future.delayed(Duration(milliseconds: widget.index * 80), () {
-      if (mounted) _ctrl.forward();
-    });
-  }
-
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: _PostCard(post: widget.post),
-      ),
     );
   }
 }
@@ -153,6 +97,7 @@ class _AnimatedPostCardState extends State<_AnimatedPostCard> with SingleTickerP
 class _PostCard extends StatelessWidget {
   final PostModel post;
   const _PostCard({required this.post});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -160,7 +105,7 @@ class _PostCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 14, offset: const Offset(0, 4))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (post.mediaPath != null && post.mediaType == 'image')
@@ -169,21 +114,43 @@ class _PostCard extends StatelessWidget {
             child: Image.network(
               '${AppConstants.storageUrl}/${post.mediaPath}',
               height: 180, width: double.infinity, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox(),
+              loadingBuilder: (_, child, progress) {
+                if (progress == null) return child;
+                return Container(
+                  height: 180,
+                  color: const Color(0xFFF1F5F9),
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                );
+              },
+              errorBuilder: (_, __, ___) => Container(
+                height: 120,
+                color: const Color(0xFFF1F5F9),
+                child: const Center(child: Icon(Icons.image_not_supported_outlined, color: Colors.grey)),
+              ),
             ),
           ),
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(post.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            Text(
+              post.title,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
+            ),
             const SizedBox(height: 8),
             Text(
               post.content.length > 120 ? '${post.content.substring(0, 120)}...' : post.content,
-              style: TextStyle(color: Colors.grey.shade600, height: 1.5, fontSize: 13),
+              style: const TextStyle(color: AppTheme.textSecondary, height: 1.6, fontSize: 13),
             ),
             if (post.publishedAt != null) ...[
-              const SizedBox(height: 8),
-              Text(post.publishedAt!.substring(0, 10), style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+              const SizedBox(height: 10),
+              Row(children: [
+                const Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.textSecondary),
+                const SizedBox(width: 4),
+                Text(
+                  post.publishedAt!.substring(0, 10),
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                ),
+              ]),
             ],
           ]),
         ),
@@ -196,41 +163,32 @@ class _PostCard extends StatelessWidget {
 
 class _ServicesTab extends ConsumerWidget {
   const _ServicesTab();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final servicesAsync = ref.watch(servicesProvider);
     final highlightId = ref.watch(notificationHighlightServiceProvider);
     return servicesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(l.error, style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => ref.invalidate(servicesProvider),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: Text(l.retry),
-              style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
-            ),
-          ],
-        ),
+      loading: () => const ShimmerList(count: 4),
+      error: (e, _) => ErrorState(
+        message: l.error,
+        onRetry: () => ref.invalidate(servicesProvider),
+        retryLabel: l.retry,
       ),
       data: (services) => services.isEmpty
-          ? Center(child: Text(l.noServices, style: const TextStyle(color: Colors.grey)))
+          ? EmptyState(icon: Icons.grid_view_rounded, message: l.noServices)
           : RefreshIndicator(
               onRefresh: () async => ref.invalidate(servicesProvider),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: services.length,
-                itemBuilder: (_, i) => _AnimatedServiceCard(
-                  service: services[i],
+                itemBuilder: (_, i) => AnimatedListItem(
                   index: i,
-                  highlighted: highlightId == services[i].id,
+                  child: _ServiceCard(
+                    service: services[i],
+                    highlighted: highlightId == services[i].id,
+                  ),
                 ),
               ),
             ),
@@ -238,43 +196,31 @@ class _ServicesTab extends ConsumerWidget {
   }
 }
 
-class _AnimatedServiceCard extends StatefulWidget {
+class _ServiceCard extends StatefulWidget {
   final ServiceModel service;
-  final int index;
   final bool highlighted;
-  const _AnimatedServiceCard({required this.service, required this.index, this.highlighted = false});
+  const _ServiceCard({required this.service, this.highlighted = false});
+
   @override
-  State<_AnimatedServiceCard> createState() => _AnimatedServiceCardState();
+  State<_ServiceCard> createState() => _ServiceCardState();
 }
 
-class _AnimatedServiceCardState extends State<_AnimatedServiceCard>
-    with TickerProviderStateMixin {
-  late AnimationController _fadeCtrl;
+class _ServiceCardState extends State<_ServiceCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseCtrl;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
   late Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _fade  = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut));
-
     _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
     _pulse = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.03), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 1.03, end: 1.0), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.02), weight: 50),
+      TweenSequenceItem(tween: Tween(begin: 1.02, end: 1.0), weight: 50),
     ]).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    Future.delayed(Duration(milliseconds: widget.index * 80), () {
-      if (mounted) _fadeCtrl.forward();
-    });
-
     if (widget.highlighted) {
-      Future.delayed(Duration(milliseconds: widget.index * 80 + 600), () {
+      Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) _pulseCtrl.repeat(count: 3);
       });
     }
@@ -282,90 +228,95 @@ class _AnimatedServiceCardState extends State<_AnimatedServiceCard>
 
   @override
   void dispose() {
-    _fadeCtrl.dispose();
     _pulseCtrl.dispose();
     super.dispose();
   }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _fade,
-      child: SlideTransition(
-        position: _slide,
-        child: ScaleTransition(
-          scale: _pulse,
-          child: _ServiceCard(service: widget.service, highlighted: widget.highlighted),
-        ),
-      ),
-    );
-  }
-}
-
-class _ServiceCard extends StatelessWidget {
-  final ServiceModel service;
-  final bool highlighted;
-  const _ServiceCard({required this.service, this.highlighted = false});
 
   void _showRequestDialog(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ServiceRequestSheet(service: service),
+      builder: (_) => _ServiceRequestSheet(service: widget.service),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: highlighted
-            ? Border.all(color: AppTheme.primary, width: 2.5)
-            : null,
-        boxShadow: [
-          if (highlighted)
-            BoxShadow(color: AppTheme.primary.withValues(alpha: 0.25), blurRadius: 20, spreadRadius: 2)
-          else
-            BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            if (service.icon != null)
-              Text(service.icon!, style: const TextStyle(fontSize: 32)),
-            if (service.icon != null) const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(service.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              if (service.showPrice && service.price != null)
-                Text('${service.price!.toStringAsFixed(0)} ج.م / شهر',
-                    style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600, fontSize: 13)),
-            ])),
-          ]),
-          if (service.description != null) ...[
-            const SizedBox(height: 10),
-            Text(service.description!, style: TextStyle(color: Colors.grey.shade600, height: 1.5, fontSize: 13)),
+    return ScaleTransition(
+      scale: _pulse,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: widget.highlighted ? Border.all(color: AppTheme.primary, width: 2) : null,
+          boxShadow: [
+            if (widget.highlighted)
+              BoxShadow(color: AppTheme.primary.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 2)
+            else
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 14, offset: const Offset(0, 4)),
           ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _showRequestDialog(context),
-              icon: const Icon(Icons.send_outlined, size: 18),
-              label: const Text('طلب الخدمة'),
-              style: ElevatedButton.styleFrom(minimumSize: const Size(0, 44)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              // Service icon in container
+              Container(
+                width: 52, height: 52,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: widget.service.icon != null
+                      ? Text(widget.service.icon!, style: const TextStyle(fontSize: 26))
+                      : const Icon(Icons.miscellaneous_services_outlined, color: AppTheme.primary, size: 26),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(widget.service.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary)),
+                if (widget.service.showPrice && widget.service.price != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${widget.service.price!.toStringAsFixed(0)} ج.م / شهر',
+                    style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ],
+              ])),
+            ]),
+            if (widget.service.description != null) ...[
+              const SizedBox(height: 12),
+              Text(widget.service.description!,
+                  style: const TextStyle(color: AppTheme.textSecondary, height: 1.6, fontSize: 13)),
+            ],
+            const SizedBox(height: 16),
+            PressableCard(
+              onTap: () => _showRequestDialog(context),
+              child: Container(
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFF6366F1)]),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.send_outlined, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Text('طلب الخدمة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                ]),
+              ),
             ),
-          ),
-        ]),
+          ]),
+        ),
       ),
     );
   }
 }
+
+// ─── Service request sheet ────────────────────────────────────────────────────
 
 class _ServiceRequestSheet extends ConsumerStatefulWidget {
   final ServiceModel service;
@@ -396,16 +347,16 @@ class _ServiceRequestSheetState extends ConsumerState<_ServiceRequestSheet> {
     try {
       await ref.read(exploreRepositoryProvider).requestService(
         serviceId: widget.service.id,
-        name:      _nameCtrl.text.trim(),
-        email:     _emailCtrl.text.trim(),
-        phone:     _phoneCtrl.text.trim(),
-        message:   _msgCtrl.text.trim(),
+        name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
+        message: _msgCtrl.text.trim(),
       );
       setState(() => _sent = true);
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('حدث خطأ، حاول مرة أخرى')));
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -434,14 +385,23 @@ class _ServiceRequestSheetState extends ConsumerState<_ServiceRequestSheet> {
 class _SuccessView extends StatelessWidget {
   final VoidCallback onClose;
   const _SuccessView({required this.onClose});
+
   @override
   Widget build(BuildContext context) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.check_circle_outline, color: AppTheme.success, size: 64),
+      Container(
+        width: 72, height: 72,
+        decoration: BoxDecoration(
+          color: AppTheme.success.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.check_rounded, color: AppTheme.success, size: 36),
+      ),
       const SizedBox(height: 16),
-      const Text('تم إرسال طلبك بنجاح!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+      const Text('تم إرسال طلبك بنجاح!',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
       const SizedBox(height: 8),
-      Text('سنتواصل معك قريباً', style: TextStyle(color: Colors.grey.shade600)),
+      Text('سنتواصل معك قريباً', style: TextStyle(color: Colors.grey.shade500)),
       const SizedBox(height: 24),
       ElevatedButton(onPressed: onClose, child: const Text('إغلاق')),
     ]);
@@ -454,33 +414,82 @@ class _FormView extends StatelessWidget {
   final TextEditingController nameCtrl, emailCtrl, phoneCtrl, msgCtrl;
   final bool loading;
   final VoidCallback onSubmit;
-  const _FormView({required this.formKey, required this.service, required this.nameCtrl, required this.emailCtrl, required this.phoneCtrl, required this.msgCtrl, required this.loading, required this.onSubmit});
+  const _FormView({
+    required this.formKey, required this.service,
+    required this.nameCtrl, required this.emailCtrl,
+    required this.phoneCtrl, required this.msgCtrl,
+    required this.loading, required this.onSubmit,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Form(
       key: formKey,
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Sheet handle
+        Center(
+          child: Container(
+            width: 40, height: 4,
+            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+          ),
+        ),
+        const SizedBox(height: 20),
         Row(children: [
-          if (service.icon != null) Text(service.icon!, style: const TextStyle(fontSize: 24)),
-          if (service.icon != null) const SizedBox(width: 8),
-          Text('طلب: ${service.name}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          if (service.icon != null)
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(child: Text(service.icon!, style: const TextStyle(fontSize: 22))),
+            ),
+          if (service.icon != null) const SizedBox(width: 10),
+          Expanded(child: Text(
+            'طلب: ${service.name}',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+          )),
         ]),
         const SizedBox(height: 20),
-        TextFormField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person_outline)), validator: (v) => v?.isEmpty == true ? 'مطلوب' : null),
+        TextFormField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person_outline)),
+          validator: (v) => v?.isEmpty == true ? 'مطلوب' : null,
+        ),
         const SizedBox(height: 12),
-        TextFormField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email_outlined)), validator: (v) => v?.isEmpty == true ? 'مطلوب' : null),
+        TextFormField(
+          controller: emailCtrl,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email_outlined)),
+          validator: (v) => v?.isEmpty == true ? 'مطلوب' : null,
+        ),
         const SizedBox(height: 12),
-        TextFormField(controller: phoneCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined)), validator: (v) => v?.isEmpty == true ? 'مطلوب' : null),
+        TextFormField(
+          controller: phoneCtrl,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined)),
+          validator: (v) => v?.isEmpty == true ? 'مطلوب' : null,
+        ),
         const SizedBox(height: 12),
-        TextFormField(controller: msgCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'رسالتك (اختياري)')),
+        TextFormField(
+          controller: msgCtrl,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'رسالتك (اختياري)'),
+        ),
         const SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: loading ? null : onSubmit,
-            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 50)),
-            child: loading ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) : const Text('إرسال الطلب', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        PressableCard(
+          onTap: loading ? () {} : onSubmit,
+          child: Container(
+            height: 52,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFF6366F1)]),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Center(
+              child: loading
+                  ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                  : const Text('إرسال الطلب', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+            ),
           ),
         ),
       ]),

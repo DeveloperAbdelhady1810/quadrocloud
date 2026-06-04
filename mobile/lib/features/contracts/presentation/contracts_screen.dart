@@ -5,6 +5,7 @@ import 'package:quadro_cloud/gen_l10n/app_localizations.dart';
 import '../data/contract_repository.dart';
 import '../data/contract_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_widgets.dart';
 import '../../invoices/data/invoice_repository.dart';
 
 class ContractsScreen extends ConsumerWidget {
@@ -18,36 +19,23 @@ class ContractsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l.contracts)),
       body: contractsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.grey),
-              const SizedBox(height: 16),
-              Text(l.error, style: const TextStyle(color: Colors.grey)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => ref.invalidate(contractsProvider),
-                icon: const Icon(Icons.refresh, size: 18),
-                label: Text(l.retry),
-                style: ElevatedButton.styleFrom(minimumSize: const Size(160, 44)),
-              ),
-            ],
-          ),
+        loading: () => const ShimmerList(count: 3),
+        error: (e, _) => ErrorState(
+          message: l.error,
+          onRetry: () => ref.invalidate(contractsProvider),
+          retryLabel: l.retry,
         ),
         data: (contracts) => contracts.isEmpty
-            ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.description_outlined, size: 64, color: Colors.grey),
-                const SizedBox(height: 16),
-                Text(l.noContracts, style: const TextStyle(color: Colors.grey)),
-              ]))
+            ? EmptyState(icon: Icons.description_outlined, message: l.noContracts)
             : RefreshIndicator(
                 onRefresh: () async => ref.invalidate(contractsProvider),
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: contracts.length,
-                  itemBuilder: (_, i) => _ContractCard(contract: contracts[i]),
+                  itemBuilder: (_, i) => AnimatedListItem(
+                    index: i,
+                    child: _ContractCard(contract: contracts[i]),
+                  ),
                 ),
               ),
       ),
@@ -74,17 +62,16 @@ class _ContractCardState extends ConsumerState<_ContractCard> {
 
   String _cycleLabel(String cycle, AppLocalizations l) {
     switch (cycle) {
-      case 'monthly':   return l.monthly;
+      case 'monthly': return l.monthly;
       case 'quarterly': return l.quarterly;
-      case 'annually':  return l.annually;
-      default:          return cycle;
+      case 'annually': return l.annually;
+      default: return cycle;
     }
   }
 
   Future<void> _pay(BuildContext context) async {
     if (_paying || widget.contract.unpaidInvoiceId == null) return;
     setState(() => _paying = true);
-    // Capture before async gap
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     String? url;
@@ -93,16 +80,12 @@ class _ContractCardState extends ConsumerState<_ContractCard> {
           .read(invoiceRepositoryProvider)
           .initiatePayment(widget.contract.unpaidInvoiceId!);
     } catch (_) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('فشل الاتصال بنظام الدفع، حاول مجدداً')),
-      );
+      messenger.showSnackBar(const SnackBar(content: Text('فشل الاتصال بنظام الدفع، حاول مجدداً')));
     } finally {
       if (mounted) setState(() => _paying = false);
     }
     if (url != null && mounted) {
-      router.go(
-        '/invoices/pay/${widget.contract.unpaidInvoiceId}/${Uri.encodeComponent(url)}',
-      );
+      router.go('/invoices/pay/${widget.contract.unpaidInvoiceId}/${Uri.encodeComponent(url)}');
     }
   }
 
@@ -118,58 +101,55 @@ class _ContractCardState extends ConsumerState<_ContractCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 14, offset: const Offset(0, 4))],
       ),
       child: Column(children: [
-        // ── Header ──────────────────────────────────────────────────────────
+
+        // ── Header ───────────────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.all(18),
           child: Row(children: [
             Container(
-              width: 48, height: 48,
+              width: 50, height: 50,
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: [AppTheme.primary.withValues(alpha: 0.15), AppTheme.primary.withValues(alpha: 0.08)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.description_outlined, color: AppTheme.primary),
+              child: const Icon(Icons.description_outlined, color: AppTheme.primary, size: 24),
             ),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              const SizedBox(height: 4),
+              Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppTheme.textPrimary)),
+              const SizedBox(height: 6),
               Row(children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(_cycleLabel(c.billingCycle, l),
-                      style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(width: 8),
-                if (c.status == 'active')
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppTheme.success.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(l.active,
-                        style: const TextStyle(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w600)),
-                  ),
+                _Chip(label: _cycleLabel(c.billingCycle, l), color: AppTheme.primary),
+                if (c.status == 'active') ...[
+                  const SizedBox(width: 6),
+                  _Chip(label: l.active, color: AppTheme.success),
+                ],
               ]),
             ])),
-            Text('${c.price.toStringAsFixed(0)} ج.م',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppTheme.primary)),
+            const SizedBox(width: 8),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(
+                '${c.price.toStringAsFixed(0)}',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: AppTheme.primary),
+              ),
+              const Text('ج.م', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: AppTheme.textSecondary)),
+            ]),
           ]),
         ),
 
-        // ── Due date footer ──────────────────────────────────────────────────
+        // ── Due date footer ───────────────────────────────────────────────────
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.06),
+            color: color.withValues(alpha: 0.05),
+            border: Border(top: BorderSide(color: color.withValues(alpha: 0.12))),
             borderRadius: showPay
                 ? BorderRadius.zero
                 : const BorderRadius.only(
@@ -178,10 +158,13 @@ class _ContractCardState extends ConsumerState<_ContractCard> {
                   ),
           ),
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(l.dueDate, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
             Row(children: [
-              Text(c.nextDueDate ?? '',
-                  style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+              Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey.shade500),
+              const SizedBox(width: 6),
+              Text(l.dueDate, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+            ]),
+            Row(children: [
+              Text(c.nextDueDate ?? '', style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -195,68 +178,43 @@ class _ContractCardState extends ConsumerState<_ContractCard> {
           ]),
         ),
 
-        // ── Pay button (only when canPay) ────────────────────────────────────
+        // ── Pay button ────────────────────────────────────────────────────────
         if (showPay)
-          Container(
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(18),
-                bottomRight: Radius.circular(18),
-              ),
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(18),
+              bottomRight: Radius.circular(18),
             ),
             child: Material(
               color: Colors.transparent,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(18),
-                bottomRight: Radius.circular(18),
-              ),
               child: InkWell(
                 onTap: _paying ? null : () => _pay(context),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(18),
-                  bottomRight: Radius.circular(18),
-                ),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
-                  decoration: BoxDecoration(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 18),
+                  decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppTheme.primary, const Color(0xFF6366F1)],
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(18),
-                      bottomRight: Radius.circular(18),
+                      colors: [Color(0xFF4338CA), Color(0xFF6366F1)],
                     ),
                   ),
                   child: _paying
-                      ? const Center(
-                          child: SizedBox(
-                            height: 20, width: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          ),
-                        )
+                      ? const Center(child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
                       : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           const Icon(Icons.payment_outlined, color: Colors.white, size: 18),
                           const SizedBox(width: 8),
                           Text(
                             'ادفع ${c.payableAmount!.toStringAsFixed(0)} ج.م',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
+                              color: Colors.white.withValues(alpha: 0.18),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text(
-                              'يشمل 5 ج.م رسوم Paymob',
-                              style: TextStyle(color: Colors.white70, fontSize: 10),
-                            ),
+                            child: const Text('يشمل 5 ج.م رسوم Paymob',
+                                style: TextStyle(color: Colors.white70, fontSize: 10)),
                           ),
                         ]),
                 ),
@@ -264,6 +222,24 @@ class _ContractCardState extends ConsumerState<_ContractCard> {
             ),
           ),
       ]),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _Chip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700)),
     );
   }
 }
