@@ -19,21 +19,29 @@ class WebhookController extends Controller
         $obj     = $request->input('obj', []);
         $success = $obj['success'] ?? false;
         $txnId   = $obj['id'] ?? null;
-        $ref     = $obj['order']['merchant_order_id'] ?? null;
 
-        $payment = \App\Models\Payment::where('special_reference', 'LIKE', '%-INV%')
-            ->whereHas('invoice', function ($q) use ($obj) {
-                $q->where('id', $obj['order']['items'][0]['id'] ?? 0);
-            })
-            ->orWhere('paymob_order_id', $obj['order']['id'] ?? null)
+        // Primary: match by special_reference echoed back by Paymob
+        $specialRef = $obj['special_reference']
+            ?? $obj['order']['merchant_order_id']
+            ?? null;
+
+        $payment = \App\Models\Payment::when($specialRef, fn($q) => $q->where('special_reference', $specialRef))
+            ->when(!$specialRef, fn($q) => $q->whereRaw('0=1'))
             ->first();
 
+        // Fallback: match by paymob_order_id stored at intent creation
         if (!$payment) {
-            $invoiceId = null;
-            if (preg_match('/-INV(\d+)-/', $payment?->special_reference ?? '', $m)) {
-                $invoiceId = $m[1];
+            $paymobOrderId = $obj['order']['id'] ?? null;
+            if ($paymobOrderId) {
+                $payment = \App\Models\Payment::where('paymob_order_id', (string) $paymobOrderId)->first();
             }
-            \Illuminate\Support\Facades\Log::warning('Paymob webhook: payment not found', ['obj' => $obj]);
+        }
+
+        if (!$payment) {
+            \Illuminate\Support\Facades\Log::warning('Paymob webhook: payment not found', [
+                'special_reference' => $specialRef,
+                'order_id'          => $obj['order']['id'] ?? null,
+            ]);
             return response()->json(['message' => 'ok']);
         }
 

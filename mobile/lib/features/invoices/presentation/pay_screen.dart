@@ -45,11 +45,7 @@ class _PayScreenState extends ConsumerState<PayScreen> {
     if (uri == null) return;
 
     final success = uri.queryParameters['success'];
-    final isPaymobCallback = uri.path.contains('post_pay') ||
-        uri.path.contains('transaction_processed') ||
-        uri.queryParameters.containsKey('txn_response_callback');
-
-    if (success == 'true' || (isPaymobCallback && success != 'false')) {
+    if (success == 'true') {
       _handleResult(success: true);
     } else if (success == 'false') {
       _handleResult(success: false);

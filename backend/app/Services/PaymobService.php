@@ -103,6 +103,7 @@ class PaymobService
             'amount'            => $invoice->amount + (self::TRANSACTION_FEE_CENTS / 100),
             'method'            => 'paymob',
             'special_reference' => $reference,
+            'paymob_order_id'   => (string) ($response->json('id') ?? ''),
             'status'            => 'pending',
         ]);
 
