@@ -234,7 +234,7 @@ class _PendingFeeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final amount = (fee['amount'] as num).toDouble();
-    final days = fee['days_until_due'] as int? ?? 0;
+    final days = fee['days_until_due'].toInt() as int? ?? 0;
     final isUrgent = days <= 3;
 
     return Container(
