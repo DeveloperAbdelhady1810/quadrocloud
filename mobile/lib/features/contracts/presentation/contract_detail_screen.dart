@@ -47,16 +47,18 @@ class _ContractDetailScreenState extends ConsumerState<ContractDetailScreen> {
     setState(() => _paying = true);
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
-    String? url;
     try {
-      url = await ref.read(invoiceRepositoryProvider).initiatePayment(contract.unpaidInvoiceId!);
+      final result = await ref.read(invoiceRepositoryProvider).initiatePayment(contract.unpaidInvoiceId!);
+      if (mounted) {
+        router.go(
+          '/invoices/pay/${contract.unpaidInvoiceId}/${Uri.encodeComponent(result.paymentUrl)}'
+          '?orderId=${Uri.encodeComponent(result.paymobOrderId)}',
+        );
+      }
     } catch (_) {
       messenger.showSnackBar(const SnackBar(content: Text('فشل الاتصال بنظام الدفع، حاول مجدداً')));
     } finally {
       if (mounted) setState(() => _paying = false);
-    }
-    if (url != null && mounted) {
-      router.go('/invoices/pay/${contract.unpaidInvoiceId}/${Uri.encodeComponent(url)}');
     }
   }
 

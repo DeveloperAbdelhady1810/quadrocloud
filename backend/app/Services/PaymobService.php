@@ -76,6 +76,7 @@ class PaymobService
             ],
             'special_reference' => $reference,
             'expiration'        => $this->expiration,
+            'redirect_url'      => config('paymob.redirect_url'),
         ];
 
         $response = Http::withOptions([
@@ -110,7 +111,56 @@ class PaymobService
         return [
             'payment_url'       => $paymentUrl,
             'special_reference' => $reference,
+            'paymob_order_id'   => (string) ($response->json('id') ?? ''),
         ];
+    }
+
+    // Verify HMAC from Paymob's redirect callback query params (GET /payments/callback)
+    public function verifyCallbackHmac(array $params): bool
+    {
+        $requestHmac = $params['hmac'] ?? '';
+
+        // Fields are sent as flat query params (dots replaced with underscores)
+        $string =
+            ($params['amount_cents']          ?? '') .
+            ($params['created_at']            ?? '') .
+            ($params['currency']              ?? '') .
+            ($params['error_occured']         ?? '') .
+            ($params['has_parent_transaction'] ?? '') .
+            ($params['id']                    ?? '') .
+            ($params['integration_id']        ?? '') .
+            ($params['is_3d_secure']          ?? '') .
+            ($params['is_auth']               ?? '') .
+            ($params['is_capture']            ?? '') .
+            ($params['is_refunded']           ?? '') .
+            ($params['is_standalone_payment'] ?? '') .
+            ($params['is_voided']             ?? '') .
+            ($params['order']                 ?? '') .
+            ($params['owner']                 ?? '') .
+            ($params['pending']               ?? '') .
+            ($params['source_data_pan']       ?? 'NA') .
+            ($params['source_data_sub_type']  ?? 'NA') .
+            ($params['source_data_type']      ?? 'NA') .
+            ($params['success']               ?? '');
+
+        $calculated = hash_hmac('sha512', $string, $this->hmacSecret);
+        return hash_equals($calculated, $requestHmac);
+    }
+
+    // Query a single transaction from Paymob API
+    public function getTransaction(int $txnId): ?array
+    {
+        $response = Http::withOptions(['verify' => app()->isProduction()])
+            ->timeout(15)
+            ->withHeaders(['Authorization' => 'Token ' . $this->secretKey])
+            ->get($this->baseUrl . '/api/acceptance/transactions/' . $txnId);
+
+        if (!$response->successful()) {
+            Log::error('Paymob getTransaction failed', ['txn_id' => $txnId, 'body' => $response->body()]);
+            return null;
+        }
+
+        return $response->json();
     }
 
     public function verifyWebhookHmac(array $data): bool

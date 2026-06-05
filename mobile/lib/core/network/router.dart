@@ -42,6 +42,7 @@ final router = GoRouter(
           return PayScreen(
             invoiceId: int.parse(state.pathParameters['invoiceId']!),
             paymentUrl: Uri.decodeComponent(state.pathParameters['url']!),
+            paymobOrderId: state.uri.queryParameters['orderId'] ?? '',
           );
         }),
         GoRoute(path: '/invoices/:id', builder: (_, state) {

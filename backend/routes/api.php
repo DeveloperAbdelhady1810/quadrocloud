@@ -16,8 +16,11 @@ use App\Http\Controllers\API\NotificationController;
 
 Route::prefix('v1')->group(function () {
 
-    // Paymob webhook — no auth
+    // Paymob server-to-server webhook — no auth
     Route::post('webhooks/paymob', [WebhookController::class, 'paymob']);
+
+    // Paymob redirect callback — no auth (browser is redirected here after payment)
+    Route::get('payments/callback', [PaymentController::class, 'callback']);
 
     // Public routes — no auth required
     Route::get('posts', [PostController::class, 'index']);
@@ -56,6 +59,7 @@ Route::prefix('v1')->group(function () {
         Route::get('payments', [PaymentController::class, 'index']);
         Route::get('payments/{id}', [PaymentController::class, 'show']);
         Route::post('payments/initiate', [PaymentController::class, 'initiate']);
+        Route::post('payments/verify', [PaymentController::class, 'verify']);
 
         Route::get('tickets', [TicketController::class, 'index']);
         Route::post('tickets', [TicketController::class, 'store']);

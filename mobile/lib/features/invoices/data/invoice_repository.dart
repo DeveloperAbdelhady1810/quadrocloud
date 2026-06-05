@@ -16,9 +16,20 @@ class InvoiceRepository {
     return InvoiceModel.fromJson(res.data as Map<String, dynamic>);
   }
 
-  Future<String> initiatePayment(int invoiceId) async {
+  Future<({String paymentUrl, String paymobOrderId})> initiatePayment(int invoiceId) async {
     final res = await _api.dio.post('/payments/initiate', data: {'invoice_id': invoiceId});
-    return res.data['payment_url'] as String;
+    return (
+      paymentUrl: res.data['payment_url'] as String,
+      paymobOrderId: (res.data['paymob_order_id'] ?? '') as String,
+    );
+  }
+
+  Future<bool> verifyPayment({required String paymobOrderId, String? transactionId}) async {
+    final res = await _api.dio.post('/payments/verify', data: {
+      'paymob_order_id': paymobOrderId,
+      if (transactionId != null) 'transaction_id': transactionId,
+    });
+    return res.data['paid'] == true;
   }
 
   Future<void> sendEmail(int invoiceId) async {

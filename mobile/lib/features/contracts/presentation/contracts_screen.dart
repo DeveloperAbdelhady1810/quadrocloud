@@ -77,18 +77,20 @@ class _ContractCardState extends ConsumerState<_ContractCard> {
     setState(() => _paying = true);
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
-    String? url;
     try {
-      url = await ref
+      final result = await ref
           .read(invoiceRepositoryProvider)
           .initiatePayment(widget.contract.unpaidInvoiceId!);
+      if (mounted) {
+        router.go(
+          '/invoices/pay/${widget.contract.unpaidInvoiceId}/${Uri.encodeComponent(result.paymentUrl)}'
+          '?orderId=${Uri.encodeComponent(result.paymobOrderId)}',
+        );
+      }
     } catch (_) {
       messenger.showSnackBar(const SnackBar(content: Text('فشل الاتصال بنظام الدفع، حاول مجدداً')));
     } finally {
       if (mounted) setState(() => _paying = false);
-    }
-    if (url != null && mounted) {
-      router.go('/invoices/pay/${widget.contract.unpaidInvoiceId}/${Uri.encodeComponent(url)}');
     }
   }
 

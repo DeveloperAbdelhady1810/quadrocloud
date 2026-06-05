@@ -226,9 +226,12 @@ class _InvoiceCardState extends State<_InvoiceCard> {
     if (_paying) return;
     setState(() => _paying = true);
     try {
-      final url = await widget.ref.read(invoiceRepositoryProvider).initiatePayment(widget.invoice.id);
+      final result = await widget.ref.read(invoiceRepositoryProvider).initiatePayment(widget.invoice.id);
       if (context.mounted) {
-        context.go('/invoices/pay/${widget.invoice.id}/${Uri.encodeComponent(url)}');
+        context.go(
+          '/invoices/pay/${widget.invoice.id}/${Uri.encodeComponent(result.paymentUrl)}'
+          '?orderId=${Uri.encodeComponent(result.paymobOrderId)}',
+        );
       }
     } catch (_) {
       if (context.mounted) {

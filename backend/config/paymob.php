@@ -7,4 +7,5 @@ return [
     'payment_methods' => array_map('intval', explode(',', env('PAYMOB_PAYMENT_METHODS', '4599003,4568416,4568415'))),
     'base_url'        => 'https://accept.paymob.com',
     'expiration'      => 3600,
+    'redirect_url'    => env('PAYMOB_REDIRECT_URL', env('APP_URL') . '/api/v1/payments/callback'),
 ];

@@ -10,7 +10,13 @@ import '../../../core/theme/app_theme.dart';
 class PayScreen extends ConsumerStatefulWidget {
   final int invoiceId;
   final String paymentUrl;
-  const PayScreen({super.key, required this.invoiceId, required this.paymentUrl});
+  final String paymobOrderId;
+  const PayScreen({
+    super.key,
+    required this.invoiceId,
+    required this.paymentUrl,
+    required this.paymobOrderId,
+  });
 
   @override
   ConsumerState<PayScreen> createState() => _PayScreenState();
@@ -44,6 +50,19 @@ class _PayScreenState extends ConsumerState<PayScreen> {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
 
+    // Detect our own redirect callback URL
+    if (uri.path.endsWith('/payments/callback')) {
+      final success = uri.queryParameters['success'];
+      final txnId   = uri.queryParameters['id'];
+      if (success == 'true') {
+        _handleResult(success: true, transactionId: txnId);
+      } else if (success == 'false') {
+        _handleResult(success: false, transactionId: txnId);
+      }
+      return;
+    }
+
+    // Fallback: Paymob's own pages that carry success param
     final success = uri.queryParameters['success'];
     if (success == 'true') {
       _handleResult(success: true);
@@ -52,25 +71,32 @@ class _PayScreenState extends ConsumerState<PayScreen> {
     }
   }
 
-  void _handleResult({required bool success}) {
+  void _handleResult({required bool success, String? transactionId}) {
     if (_paymentDone || !mounted) return;
     _paymentDone = true;
 
-    // Capture container + router BEFORE any async — both outlive the widget
-    final container = ProviderScope.containerOf(context);
-    final goRouter = GoRouter.of(context);
+    final container   = ProviderScope.containerOf(context);
+    final goRouter    = GoRouter.of(context);
+    final repo        = container.read(invoiceRepositoryProvider);
+    final paymobOrder = widget.paymobOrderId;
+
+    void refresh() {
+      container.invalidate(invoicesProvider);
+      container.invalidate(contractsProvider);
+    }
 
     if (success) {
-      // Refresh immediately, then at 3 s and 6 s to catch the Paymob webhook.
-      // Uses ProviderContainer directly — safe after PayScreen is disposed.
-      void refresh() {
-        container.invalidate(invoicesProvider);
-        container.invalidate(contractsProvider);
-      }
-
       refresh();
-      Future.delayed(const Duration(seconds: 3), refresh);
-      Future.delayed(const Duration(seconds: 6), refresh);
+      // Option B: verify immediately via API so the DB is updated before the
+      // user even sees the dialog, regardless of webhook delivery.
+      repo.verifyPayment(
+        paymobOrderId: paymobOrder,
+        transactionId: transactionId,
+      ).then((_) => refresh()).catchError((_) {
+        // Fallback delayed refreshes if verify fails
+        Future.delayed(const Duration(seconds: 3), refresh);
+        Future.delayed(const Duration(seconds: 6), refresh);
+      });
     }
 
     showDialog(
@@ -79,9 +105,9 @@ class _PayScreenState extends ConsumerState<PayScreen> {
       builder: (_) => _ResultDialog(
         success: success,
         onConfirm: () {
-          context.pop();  // close the dialog
+          context.pop();
           goRouter.go('/invoices');
-        } 
+        },
       ),
     );
   }
