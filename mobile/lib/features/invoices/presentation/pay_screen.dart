@@ -32,131 +32,55 @@ class _PayScreenState extends ConsumerState<PayScreen> {
         },
         onPageFinished: (url) {
           if (mounted) setState(() => _isLoading = false);
-          _checkPaymobCallback(url);
+          if (mounted) _checkPaymobCallback(url);
         },
-        onWebResourceError: (error) {
-          // Ignore resource errors (ads, trackers, etc.)
-        },
+        onWebResourceError: (_) {},
       ))
       ..loadRequest(Uri.parse(widget.paymentUrl));
   }
 
   void _checkPaymobCallback(String url) {
     if (_paymentDone) return;
-
-    // Parse query parameters — Paymob appends ?success=true or ?success=false
     final uri = Uri.tryParse(url);
     if (uri == null) return;
 
     final success = uri.queryParameters['success'];
-    final hasTxnResponse = uri.queryParameters.containsKey('txn_response_callback') ||
-        uri.path.contains('post_pay') ||
-        uri.path.contains('transaction_processed');
+    final isPaymobCallback = uri.path.contains('post_pay') ||
+        uri.path.contains('transaction_processed') ||
+        uri.queryParameters.containsKey('txn_response_callback');
 
-    if (success == 'true' || (hasTxnResponse && success != 'false')) {
-      _onPaymentSuccess();
+    if (success == 'true' || (isPaymobCallback && success != 'false')) {
+      _handleResult(success: true);
     } else if (success == 'false') {
-      _onPaymentFailed();
+      _handleResult(success: false);
     }
   }
 
-  void _onPaymentSuccess() {
-    if (_paymentDone) return;
+  void _handleResult({required bool success}) {
+    if (_paymentDone || !mounted) return;
     _paymentDone = true;
 
-    // Invalidate providers immediately then again after webhook delay
-    ref.invalidate(invoicesProvider);
-    ref.invalidate(contractsProvider);
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        ref.invalidate(invoicesProvider);
-        ref.invalidate(contractsProvider);
-      }
-    });
+    if (success) {
+      // Invalidate now and again after 3 s to catch the async Paymob webhook
+      ref.invalidate(invoicesProvider);
+      ref.invalidate(contractsProvider);
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          ref.invalidate(invoicesProvider);
+          ref.invalidate(contractsProvider);
+        }
+      });
+    }
 
-    if (!mounted) return;
+    // Capture the router BEFORE the dialog is shown — safe even after widget disposes
+    final goRouter = GoRouter.of(context);
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: const Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(height: 8),
-          _SuccessIcon(),
-          SizedBox(height: 20),
-          Text(
-            'تمت عملية الدفع بنجاح!',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 8),
-          Text(
-            'سيتم تحديث حالة الفاتورة خلال لحظات',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 4),
-        ]),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                // Use context.go — handles dialog dismissal + navigation in one step
-                if (context.mounted) context.go('/invoices');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.success,
-                minimumSize: const Size(0, 46),
-              ),
-              child: const Text('حسناً'),
-            ),
-          ),
-        ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      ),
-    );
-  }
-
-  void _onPaymentFailed() {
-    if (_paymentDone) return;
-    _paymentDone = true;
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: const Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(height: 8),
-          Icon(Icons.cancel_rounded, color: AppTheme.danger, size: 64),
-          SizedBox(height: 20),
-          Text(
-            'فشلت عملية الدفع',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 8),
-          Text(
-            'يرجى التحقق من بياناتك والمحاولة مرة أخرى',
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
-            textAlign: TextAlign.center,
-          ),
-        ]),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                if (context.mounted) context.go('/invoices');
-              },
-              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46)),
-              child: const Text('رجوع للفواتير'),
-            ),
-          ),
-        ],
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      builder: (_) => _ResultDialog(
+        success: success,
+        onConfirm: () => goRouter.go('/invoices'),
       ),
     );
   }
@@ -169,16 +93,61 @@ class _PayScreenState extends ConsumerState<PayScreen> {
         title: Text(l.onlinePay),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
-          onPressed: () {
-            if (context.mounted) context.go('/invoices');
-          },
+          onPressed: () => GoRouter.of(context).go('/invoices'),
         ),
       ),
       body: Stack(children: [
         WebViewWidget(controller: _controller),
-        if (_isLoading)
-          const Center(child: CircularProgressIndicator()),
+        if (_isLoading) const Center(child: CircularProgressIndicator()),
       ]),
+    );
+  }
+}
+
+// ── Stateless dialog — no BuildContext captured from PayScreen ─────────────────
+
+class _ResultDialog extends StatelessWidget {
+  final bool success;
+  final VoidCallback onConfirm;
+  const _ResultDialog({required this.success, required this.onConfirm});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        const SizedBox(height: 8),
+        success ? const _SuccessIcon() : const Icon(Icons.cancel_rounded, color: AppTheme.danger, size: 64),
+        const SizedBox(height: 20),
+        Text(
+          success ? 'تمت عملية الدفع بنجاح!' : 'فشلت عملية الدفع',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          success
+              ? 'سيتم تحديث حالة الفاتورة خلال لحظات'
+              : 'يرجى التحقق من بياناتك والمحاولة مرة أخرى',
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+      ]),
+      actions: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: onConfirm,   // uses the captured GoRouter — no context needed
+            style: ElevatedButton.styleFrom(
+              backgroundColor: success ? AppTheme.success : AppTheme.primary,
+              minimumSize: const Size(0, 46),
+            ),
+            child: Text(success ? 'حسناً' : 'رجوع للفواتير'),
+          ),
+        ),
+      ],
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
     );
   }
 }
