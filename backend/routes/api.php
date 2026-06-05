@@ -12,6 +12,7 @@ use App\Http\Controllers\API\TicketController;
 use App\Http\Controllers\API\WebhookController;
 use App\Http\Controllers\API\PostController;
 use App\Http\Controllers\API\PublicServiceController;
+use App\Http\Controllers\API\NotificationController;
 
 Route::prefix('v1')->group(function () {
 
@@ -38,6 +39,7 @@ Route::prefix('v1')->group(function () {
             Route::put('fcm-token', [AuthController::class, 'updateFcmToken']);
             Route::put('locale', [AuthController::class, 'updateLocale']);
             Route::put('password', [AuthController::class, 'changePassword']);
+            Route::put('profile', [AuthController::class, 'updateProfile']);
         });
 
         Route::get('dashboard', [DashboardController::class, 'index']);
@@ -47,6 +49,8 @@ Route::prefix('v1')->group(function () {
         Route::get('fees/{id}', [FeeController::class, 'show']);
 
         Route::get('invoices', [InvoiceController::class, 'index']);
+        Route::get('invoices/{id}', [InvoiceController::class, 'show']);
+        Route::post('invoices/{id}/send-email', [InvoiceController::class, 'sendEmail']);
         Route::get('invoices/{id}/pdf', [InvoiceController::class, 'download']);
 
         Route::get('payments', [PaymentController::class, 'index']);
@@ -57,5 +61,7 @@ Route::prefix('v1')->group(function () {
         Route::post('tickets', [TicketController::class, 'store']);
         Route::get('tickets/{id}', [TicketController::class, 'show']);
         Route::post('tickets/{id}/reply', [TicketController::class, 'reply']);
+
+        Route::get('notifications', [NotificationController::class, 'index']);
     });
 });

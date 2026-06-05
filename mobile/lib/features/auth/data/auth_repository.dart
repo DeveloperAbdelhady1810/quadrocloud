@@ -69,6 +69,23 @@ class AuthRepository {
     await _api.dio.put('/auth/locale', data: {'locale': locale});
   }
 
+  Future<ClientModel> updateProfile({
+    String? name,
+    String? phone,
+    String? companyName,
+    String? address,
+  }) async {
+    final res = await _api.dio.put('/auth/profile', data: {
+      if (name != null) 'name': name,
+      if (phone != null) 'phone': phone,
+      if (companyName != null) 'company_name': companyName,
+      if (address != null) 'address': address,
+    });
+    final client = ClientModel.fromJson(res.data);
+    await AppStorage.setClientJson(jsonEncode(client.toJson()));
+    return client;
+  }
+
   Future<ClientModel?> getCachedClient() async {
     final json = await AppStorage.getClientJson();
     if (json == null) return null;

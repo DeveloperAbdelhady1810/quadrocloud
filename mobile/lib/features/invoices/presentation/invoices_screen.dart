@@ -7,11 +7,35 @@ import '../data/invoice_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_widgets.dart';
 
-class InvoicesScreen extends ConsumerWidget {
+class InvoicesScreen extends ConsumerStatefulWidget {
   const InvoicesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InvoicesScreen> createState() => _InvoicesScreenState();
+}
+
+class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
+  final _searchCtrl = TextEditingController();
+  String _filter = 'all';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<InvoiceModel> _applyFilters(List<InvoiceModel> invoices) {
+    var list = invoices;
+    if (_filter != 'all') list = list.where((i) => i.status == _filter).toList();
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      list = list.where((i) => i.invoiceNumber.toLowerCase().contains(q)).toList();
+    }
+    return list;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final invoicesAsync = ref.watch(invoicesProvider);
 
@@ -24,19 +48,138 @@ class InvoicesScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(invoicesProvider),
           retryLabel: l.retry,
         ),
-        data: (invoices) => invoices.isEmpty
-            ? EmptyState(icon: Icons.receipt_outlined, message: l.noInvoices)
-            : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(invoicesProvider),
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: invoices.length,
-                  itemBuilder: (_, i) => AnimatedListItem(
-                    index: i,
-                    child: _InvoiceCard(invoice: invoices[i], ref: ref),
-                  ),
-                ),
-              ),
+        data: (invoices) {
+          if (invoices.isEmpty) {
+            return EmptyState(icon: Icons.receipt_outlined, message: l.noInvoices);
+          }
+          final filtered = _applyFilters(invoices);
+          return Column(children: [
+
+            // ── Search + filter bar ──────────────────────────────────────────
+            _SearchFilterBar(
+              controller: _searchCtrl,
+              filter: _filter,
+              onFilterChanged: (v) => setState(() => _filter = v),
+              onSearchChanged: (_) => setState(() {}),
+            ),
+
+            // ── List ─────────────────────────────────────────────────────────
+            Expanded(
+              child: filtered.isEmpty
+                  ? const Center(child: Text('لا توجد نتائج', style: TextStyle(color: AppTheme.textSecondary)))
+                  : RefreshIndicator(
+                      onRefresh: () async => ref.invalidate(invoicesProvider),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) => AnimatedListItem(
+                          index: i,
+                          child: _InvoiceCard(invoice: filtered[i], ref: ref),
+                        ),
+                      ),
+                    ),
+            ),
+          ]);
+        },
+      ),
+    );
+  }
+}
+
+class _SearchFilterBar extends StatelessWidget {
+  final TextEditingController controller;
+  final String filter;
+  final ValueChanged<String> onFilterChanged;
+  final ValueChanged<String> onSearchChanged;
+
+  const _SearchFilterBar({
+    required this.controller,
+    required this.filter,
+    required this.onFilterChanged,
+    required this.onSearchChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      child: Column(children: [
+        TextField(
+          controller: controller,
+          onChanged: onSearchChanged,
+          decoration: InputDecoration(
+            hintText: 'ابحث برقم الفاتورة...',
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            suffixIcon: ValueListenableBuilder(
+              valueListenable: controller,
+              builder: (_, v, __) => v.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        controller.clear();
+                        onSearchChanged('');
+                      },
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            _FilterChip(label: 'الكل', value: 'all', selected: filter, onTap: onFilterChanged),
+            const SizedBox(width: 8),
+            _FilterChip(label: 'غير مدفوعة', value: 'unpaid', selected: filter, onTap: onFilterChanged, color: AppTheme.warning),
+            const SizedBox(width: 8),
+            _FilterChip(label: 'مدفوعة', value: 'paid', selected: filter, onTap: onFilterChanged, color: AppTheme.success),
+            const SizedBox(width: 8),
+            _FilterChip(label: 'متأخرة', value: 'overdue', selected: filter, onTap: onFilterChanged, color: AppTheme.danger),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final String selected;
+  final ValueChanged<String> onTap;
+  final Color color;
+
+  const _FilterChip({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+    this.color = AppTheme.primary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = selected == value;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? color : Colors.grey.shade300),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppTheme.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -87,7 +230,7 @@ class _InvoiceCardState extends State<_InvoiceCard> {
       if (context.mounted) {
         context.go('/invoices/pay/${widget.invoice.id}/${Uri.encodeComponent(url)}');
       }
-    } catch (e) {
+    } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.error)));
       }
@@ -101,110 +244,107 @@ class _InvoiceCardState extends State<_InvoiceCard> {
     final l = AppLocalizations.of(context)!;
     final statusColor = _statusColor();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border(left: BorderSide(color: statusColor, width: 4)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2))],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return PressableCard(
+      onTap: () => context.go('/invoices/${widget.invoice.id}'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border(left: BorderSide(color: statusColor, width: 4)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2))],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
-          // Top row: invoice # + status chip
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Row(children: [
-              Icon(Icons.receipt_outlined, size: 16, color: AppTheme.textSecondary),
-              const SizedBox(width: 6),
-              Text(widget.invoice.invoiceNumber,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
-            ]),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(_statusIcon(), size: 12, color: statusColor),
-                const SizedBox(width: 4),
-                Text(_statusLabel(l), style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
-              ]),
-            ),
-          ]),
-
-          const SizedBox(height: 14),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-          const SizedBox(height: 14),
-
-          // Amount + date row
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(l.amount, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-              const SizedBox(height: 3),
-              Text(
-                '${widget.invoice.amount.toStringAsFixed(0)} ج.م',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: AppTheme.primary),
-              ),
-            ]),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(
-                widget.invoice.isPaid ? l.paidAt : l.dueDate,
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                widget.invoice.isPaid
-                    ? (widget.invoice.paidAt ?? '')
-                    : (widget.invoice.dueDate ?? ''),
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-            ]),
-          ]),
-
-          // Pay button
-          if (widget.invoice.isUnpaid || widget.invoice.isOverdue) ...[
-            const SizedBox(height: 14),
-            PressableCard(
-              onTap: _paying ? () {} : () => _pay(context, l),
-              child: Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFF6366F1)]),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: _paying
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.payment_rounded, color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
-                          Text(l.onlinePay, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                        ]),
-                ),
-              ),
-            ),
-          ],
-
-          // Paid indicator
-          if (widget.invoice.isPaid) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.success.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 14),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Row(children: [
+                Icon(Icons.receipt_outlined, size: 16, color: AppTheme.textSecondary),
                 const SizedBox(width: 6),
+                Text(widget.invoice.invoiceNumber,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
+              ]),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(_statusIcon(), size: 12, color: statusColor),
+                  const SizedBox(width: 4),
+                  Text(_statusLabel(l), style: TextStyle(color: statusColor, fontWeight: FontWeight.w700, fontSize: 11)),
+                ]),
+              ),
+            ]),
+
+            const SizedBox(height: 14),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 14),
+
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(l.amount, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                const SizedBox(height: 3),
                 Text(
-                  widget.invoice.paymentMethod == 'cash' ? 'دفع نقدي' : 'دفع أونلاين - Paymob',
-                  style: const TextStyle(color: AppTheme.success, fontSize: 12, fontWeight: FontWeight.w600),
+                  '${widget.invoice.amount.toStringAsFixed(0)} ج.م',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: AppTheme.primary),
                 ),
               ]),
-            ),
-          ],
-        ]),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text(
+                  widget.invoice.isPaid ? l.paidAt : l.dueDate,
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  widget.invoice.isPaid ? (widget.invoice.paidAt ?? '') : (widget.invoice.dueDate ?? ''),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ]),
+            ]),
+
+            if (widget.invoice.isUnpaid || widget.invoice.isOverdue) ...[
+              const SizedBox(height: 14),
+              PressableCard(
+                onTap: _paying ? () {} : () => _pay(context, l),
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [AppTheme.primary, Color(0xFF6366F1)]),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: _paying
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.payment_rounded, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Text(l.onlinePay, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                          ]),
+                  ),
+                ),
+              ),
+            ],
+
+            if (widget.invoice.isPaid) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.success.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.invoice.paymentMethod == 'cash' ? 'دفع نقدي' : 'دفع أونلاين - Paymob',
+                    style: const TextStyle(color: AppTheme.success, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ]),
+              ),
+            ],
+          ]),
+        ),
       ),
     );
   }

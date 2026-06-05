@@ -34,7 +34,10 @@ class ContractsScreen extends ConsumerWidget {
                   itemCount: contracts.length,
                   itemBuilder: (_, i) => AnimatedListItem(
                     index: i,
-                    child: _ContractCard(contract: contracts[i]),
+                    child: PressableCard(
+                      onTap: () => context.go('/contracts/${contracts[i].id}'),
+                      child: _ContractCard(contract: contracts[i]),
+                    ),
                   ),
                 ),
               ),
@@ -136,7 +139,7 @@ class _ContractCardState extends ConsumerState<_ContractCard> {
             const SizedBox(width: 8),
             Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text(
-                '${c.price.toStringAsFixed(0)}',
+                c.price.toStringAsFixed(0),
                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: AppTheme.primary),
               ),
               const Text('ج.م', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: AppTheme.textSecondary)),

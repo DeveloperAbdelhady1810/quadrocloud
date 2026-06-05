@@ -3,10 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quadro_cloud/gen_l10n/app_localizations.dart';
 import '../data/auth_repository.dart';
+import '../data/client_model.dart';
 import '../../../core/utils/storage.dart';
 import '../../../core/theme/app_theme.dart';
 
 final _localeProvider = StateProvider<String>((ref) => 'ar');
+
+final _cachedClientProvider = FutureProvider<ClientModel?>((ref) async {
+  return ref.read(authRepositoryProvider).getCachedClient();
+});
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -65,6 +70,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final locale = ref.watch(_localeProvider);
+    final clientAsync = ref.watch(_cachedClientProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l.settings)),
@@ -73,8 +79,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
 
           // ── Profile section ──────────────────────────────────────────────
-          _ProfileCard(),
+          _ProfileCard(client: clientAsync.valueOrNull),
           const SizedBox(height: 24),
+
+          // ── Edit profile ─────────────────────────────────────────────────
+          _SectionHeader(title: 'تعديل الملف الشخصي'),
+          _SettingCard(child: _EditProfileForm(
+            client: clientAsync.valueOrNull,
+            onSaved: () => ref.invalidate(_cachedClientProvider),
+          )),
+          const SizedBox(height: 16),
 
           // ── Language ─────────────────────────────────────────────────────
           _SectionHeader(title: l.changeLanguage),
@@ -146,6 +160,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 }
 
 class _ProfileCard extends StatelessWidget {
+  final ClientModel? client;
+  const _ProfileCard({this.client});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -170,10 +187,22 @@ class _ProfileCard extends StatelessWidget {
           child: const Icon(Icons.person_outline_rounded, color: Colors.white, size: 28),
         ),
         const SizedBox(width: 16),
-        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Client Portal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-          SizedBox(height: 4),
-          Text('Quadro Cloud', style: TextStyle(color: Colors.white60, fontSize: 13)),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+            client?.name ?? 'Client Portal',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            client?.email ?? 'Quadro Cloud',
+            style: const TextStyle(color: Colors.white60, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (client?.companyName != null) ...[
+            const SizedBox(height: 2),
+            Text(client!.companyName!, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          ],
         ])),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -184,6 +213,132 @@ class _ProfileCard extends StatelessWidget {
           ),
           child: const Text('نشط', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
         ),
+      ]),
+    );
+  }
+}
+
+class _EditProfileForm extends ConsumerStatefulWidget {
+  final ClientModel? client;
+  final VoidCallback onSaved;
+  const _EditProfileForm({this.client, required this.onSaved});
+
+  @override
+  ConsumerState<_EditProfileForm> createState() => _EditProfileFormState();
+}
+
+class _EditProfileFormState extends ConsumerState<_EditProfileForm> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _phoneCtrl;
+  late final TextEditingController _companyCtrl;
+  late final TextEditingController _addressCtrl;
+  final _formKey = GlobalKey<FormState>();
+  bool _loading = false;
+  bool _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.client?.name ?? '');
+    _phoneCtrl = TextEditingController(text: widget.client?.phone ?? '');
+    _companyCtrl = TextEditingController(text: widget.client?.companyName ?? '');
+    _addressCtrl = TextEditingController(text: widget.client?.address ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    _companyCtrl.dispose();
+    _addressCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+    try {
+      await ref.read(authRepositoryProvider).updateProfile(
+            name: _nameCtrl.text.trim(),
+            phone: _phoneCtrl.text.trim(),
+            companyName: _companyCtrl.text.trim(),
+            address: _addressCtrl.text.trim(),
+          );
+      widget.onSaved();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ البيانات بنجاح')));
+        setState(() => _expanded = false);
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل في حفظ البيانات')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      child: Column(children: [
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(children: [
+              const Icon(Icons.edit_outlined, size: 18, color: AppTheme.primary),
+              const SizedBox(width: 10),
+              const Text('تعديل البيانات الشخصية',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
+              const Spacer(),
+              Icon(_expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: AppTheme.textSecondary),
+            ]),
+          ),
+        ),
+        if (_expanded)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Form(
+              key: _formKey,
+              child: Column(children: [
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(labelText: 'الاسم', prefixIcon: Icon(Icons.person_outline_rounded)),
+                  validator: (v) => v?.trim().isEmpty == true ? 'مطلوب' : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined)),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _companyCtrl,
+                  decoration: const InputDecoration(labelText: 'اسم الشركة', prefixIcon: Icon(Icons.business_outlined)),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _addressCtrl,
+                  decoration: const InputDecoration(labelText: 'العنوان', prefixIcon: Icon(Icons.location_on_outlined)),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _loading ? null : _save,
+                    style: ElevatedButton.styleFrom(minimumSize: const Size(0, 46)),
+                    child: _loading
+                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('حفظ التغييرات'),
+                  ),
+                ),
+              ]),
+            ),
+          ),
       ]),
     );
   }

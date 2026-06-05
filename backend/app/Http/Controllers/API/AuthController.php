@@ -75,6 +75,29 @@ class AuthController extends Controller
         return response()->json(['message' => 'Locale updated']);
     }
 
+    public function updateProfile(Request $request)
+    {
+        $request->validate([
+            'name'         => 'sometimes|string|max:255',
+            'phone'        => 'sometimes|nullable|string|max:30',
+            'company_name' => 'sometimes|nullable|string|max:255',
+            'address'      => 'sometimes|nullable|string|max:500',
+        ]);
+
+        $client = $request->user();
+        $client->update($request->only(['name', 'phone', 'company_name', 'address']));
+
+        return response()->json([
+            'id'           => $client->id,
+            'name'         => $client->name,
+            'email'        => $client->email,
+            'phone'        => $client->phone,
+            'company_name' => $client->company_name,
+            'address'      => $client->address,
+            'locale'       => $client->locale,
+        ]);
+    }
+
     public function changePassword(Request $request)
     {
         $request->validate([

@@ -6,6 +6,7 @@ class InvoiceModel {
   final String? dueDate;
   final String? paidAt;
   final String? paymentMethod;
+  final String? description;
 
   const InvoiceModel({
     required this.id,
@@ -15,6 +16,7 @@ class InvoiceModel {
     this.dueDate,
     this.paidAt,
     this.paymentMethod,
+    this.description,
   });
 
   factory InvoiceModel.fromJson(Map<String, dynamic> j) => InvoiceModel(
@@ -25,6 +27,7 @@ class InvoiceModel {
         dueDate: j['due_date'],
         paidAt: j['paid_at'],
         paymentMethod: j['payment_method'],
+        description: j['description'],
       );
 
   bool get isPaid => status == 'paid';

@@ -7,11 +7,35 @@ import '../data/ticket_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_widgets.dart';
 
-class TicketsScreen extends ConsumerWidget {
+class TicketsScreen extends ConsumerStatefulWidget {
   const TicketsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TicketsScreen> createState() => _TicketsScreenState();
+}
+
+class _TicketsScreenState extends ConsumerState<TicketsScreen> {
+  final _searchCtrl = TextEditingController();
+  String _statusFilter = 'all';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<TicketModel> _applyFilters(List<TicketModel> tickets) {
+    var list = tickets;
+    if (_statusFilter != 'all') list = list.where((t) => t.status == _statusFilter).toList();
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      list = list.where((t) => t.title.toLowerCase().contains(q)).toList();
+    }
+    return list;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     final ticketsAsync = ref.watch(ticketsProvider);
 
@@ -32,24 +56,44 @@ class TicketsScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(ticketsProvider),
           retryLabel: l.retry,
         ),
-        data: (tickets) => tickets.isEmpty
-            ? EmptyState(
-                icon: Icons.headset_mic_outlined,
-                message: l.noTickets,
-                actionLabel: l.newTicket,
-                onAction: () => context.go('/tickets/new'),
-              )
-            : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(ticketsProvider),
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: tickets.length,
-                  itemBuilder: (_, i) => AnimatedListItem(
-                    index: i,
-                    child: _TicketCard(ticket: tickets[i]),
-                  ),
-                ),
-              ),
+        data: (tickets) {
+          if (tickets.isEmpty) {
+            return EmptyState(
+              icon: Icons.headset_mic_outlined,
+              message: l.noTickets,
+              actionLabel: l.newTicket,
+              onAction: () => context.go('/tickets/new'),
+            );
+          }
+          final filtered = _applyFilters(tickets);
+          return Column(children: [
+
+            // ── Search + filter bar ──────────────────────────────────────────
+            _SearchFilterBar(
+              controller: _searchCtrl,
+              filter: _statusFilter,
+              onFilterChanged: (v) => setState(() => _statusFilter = v),
+              onSearchChanged: (_) => setState(() {}),
+            ),
+
+            // ── List ─────────────────────────────────────────────────────────
+            Expanded(
+              child: filtered.isEmpty
+                  ? const Center(child: Text('لا توجد نتائج', style: TextStyle(color: AppTheme.textSecondary)))
+                  : RefreshIndicator(
+                      onRefresh: () async => ref.invalidate(ticketsProvider),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) => AnimatedListItem(
+                          index: i,
+                          child: _TicketCard(ticket: filtered[i]),
+                        ),
+                      ),
+                    ),
+            ),
+          ]);
+        },
       ),
       floatingActionButton: ticketsAsync.hasValue && ticketsAsync.value!.isNotEmpty
           ? FloatingActionButton.extended(
@@ -58,6 +102,105 @@ class TicketsScreen extends ConsumerWidget {
               label: Text(l.newTicket),
             )
           : null,
+    );
+  }
+}
+
+class _SearchFilterBar extends StatelessWidget {
+  final TextEditingController controller;
+  final String filter;
+  final ValueChanged<String> onFilterChanged;
+  final ValueChanged<String> onSearchChanged;
+
+  const _SearchFilterBar({
+    required this.controller,
+    required this.filter,
+    required this.onFilterChanged,
+    required this.onSearchChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      child: Column(children: [
+        TextField(
+          controller: controller,
+          onChanged: onSearchChanged,
+          decoration: InputDecoration(
+            hintText: 'ابحث بعنوان التذكرة...',
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            suffixIcon: ValueListenableBuilder(
+              valueListenable: controller,
+              builder: (_, v, __) => v.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 18),
+                      onPressed: () {
+                        controller.clear();
+                        onSearchChanged('');
+                      },
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            _FilterChip(label: 'الكل', value: 'all', selected: filter, onTap: onFilterChanged),
+            const SizedBox(width: 8),
+            _FilterChip(label: 'مفتوحة', value: 'open', selected: filter, onTap: onFilterChanged, color: AppTheme.primary),
+            const SizedBox(width: 8),
+            _FilterChip(label: 'قيد المعالجة', value: 'in_progress', selected: filter, onTap: onFilterChanged, color: AppTheme.warning),
+            const SizedBox(width: 8),
+            _FilterChip(label: 'مغلقة', value: 'closed', selected: filter, onTap: onFilterChanged, color: Colors.grey),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final String selected;
+  final ValueChanged<String> onTap;
+  final Color color;
+
+  const _FilterChip({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+    this.color = AppTheme.primary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = selected == value;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? color : Colors.grey.shade300),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppTheme.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
     );
   }
 }
