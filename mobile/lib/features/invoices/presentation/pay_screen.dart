@@ -60,20 +60,22 @@ class _PayScreenState extends ConsumerState<PayScreen> {
     if (_paymentDone || !mounted) return;
     _paymentDone = true;
 
-    if (success) {
-      // Invalidate now and again after 3 s to catch the async Paymob webhook
-      ref.invalidate(invoicesProvider);
-      ref.invalidate(contractsProvider);
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          ref.invalidate(invoicesProvider);
-          ref.invalidate(contractsProvider);
-        }
-      });
-    }
-
-    // Capture the router BEFORE the dialog is shown — safe even after widget disposes
+    // Capture container + router BEFORE any async — both outlive the widget
+    final container = ProviderScope.containerOf(context);
     final goRouter = GoRouter.of(context);
+
+    if (success) {
+      // Refresh immediately, then at 3 s and 6 s to catch the Paymob webhook.
+      // Uses ProviderContainer directly — safe after PayScreen is disposed.
+      void refresh() {
+        container.invalidate(invoicesProvider);
+        container.invalidate(contractsProvider);
+      }
+
+      refresh();
+      Future.delayed(const Duration(seconds: 3), refresh);
+      Future.delayed(const Duration(seconds: 6), refresh);
+    }
 
     showDialog(
       context: context,
