@@ -80,7 +80,10 @@ class _PayScreenState extends ConsumerState<PayScreen> {
       barrierDismissible: false,
       builder: (_) => _ResultDialog(
         success: success,
-        onConfirm: () => goRouter.go('/invoices'),
+        onConfirm: () {
+          context.pop();  // close the dialog
+          goRouter.go('/invoices');
+        } 
       ),
     );
   }
