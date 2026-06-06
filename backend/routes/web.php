@@ -12,6 +12,7 @@ use App\Http\Controllers\Dashboard\TeamController;
 use App\Http\Controllers\Dashboard\PostController;
 use App\Http\Controllers\Dashboard\ServiceController;
 use App\Http\Controllers\Dashboard\NotificationController;
+use App\Http\Controllers\Dashboard\InvoiceController;
 
 Route::get('/', fn() => redirect()->route('dashboard.login'));
 
@@ -40,6 +41,7 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
         Route::get('clients/{client}/edit', [ClientController::class, 'edit'])->name('clients.edit');
         Route::put('clients/{client}', [ClientController::class, 'update'])->name('clients.update');
         Route::post('clients/{client}/toggle', [ClientController::class, 'toggleActive'])->name('clients.toggle');
+        Route::post('clients/{client}/send-login-link', [ClientController::class, 'sendLoginLink'])->name('clients.send-login-link');
 
         // Contracts
         Route::get('clients/{client}/contracts/create', [ContractController::class, 'create'])->name('contracts.create');
@@ -51,6 +53,10 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
         Route::get('clients/{client}/fees/create', [FeeController::class, 'create'])->name('fees.create');
         Route::post('clients/{client}/fees', [FeeController::class, 'store'])->name('fees.store');
         Route::post('fees/{fee}/cancel', [FeeController::class, 'cancel'])->name('fees.cancel');
+
+        // Manual invoices
+        Route::get('invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
+        Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
 
         // Payments
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');

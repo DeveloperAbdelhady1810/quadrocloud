@@ -90,6 +90,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     }
   }
 
+  void _showOtpSheet(BuildContext context) {
+    final router = GoRouter.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _OtpLoginSheet(
+        onLogin: (email, otp) async {
+          await ref.read(authRepositoryProvider).otpLogin(email, otp);
+          router.go('/home');
+        },
+      ),
+    );
+  }
+
   Future<void> _socialLogin(String provider) async {
     ref.read(_socialLoadingProvider.notifier).state = provider;
     setState(() => _error = null);
@@ -285,6 +300,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             textColor: Colors.white,
                           ),
                         ],
+
+                        // OTP login link
+                        const SizedBox(height: 20),
+                        GestureDetector(
+                          onTap: () => _showOtpSheet(context),
+                          child: Center(
+                            child: Text(
+                              'لديك كود دخول؟ اضغط هنا',
+                              style: TextStyle(color: AppTheme.primary.withValues(alpha: 0.8), fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
                       ]),
                     ),
                   ),
@@ -396,6 +423,110 @@ class _GoogleIcon extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OtpLoginSheet extends StatefulWidget {
+  final Future<void> Function(String email, String otp) onLogin;
+  const _OtpLoginSheet({required this.onLogin});
+
+  @override
+  State<_OtpLoginSheet> createState() => _OtpLoginSheetState();
+}
+
+class _OtpLoginSheetState extends State<_OtpLoginSheet> {
+  final _emailCtrl = TextEditingController();
+  final _otpCtrl = TextEditingController();
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _otpCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final email = _emailCtrl.text.trim();
+    final otp = _otpCtrl.text.trim();
+    if (email.isEmpty || otp.length != 6) {
+      setState(() => _error = 'أدخل البريد الإلكتروني والكود المكون من 6 أرقام');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    try {
+      await widget.onLogin(email, otp);
+    } catch (_) {
+      if (mounted) setState(() { _loading = false; _error = 'الكود غير صحيح أو منتهي الصلاحية'; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Center(
+          child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+        ),
+        const SizedBox(height: 20),
+        const Text('الدخول بكود', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+        const SizedBox(height: 4),
+        Text('أدخل بريدك والكود الذي أرسله لك المدير', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+        const SizedBox(height: 20),
+        if (_error != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.danger.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppTheme.danger.withValues(alpha: 0.25)),
+            ),
+            child: Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 13)),
+          ),
+          const SizedBox(height: 12),
+        ],
+        TextField(
+          controller: _emailCtrl,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email_outlined)),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _otpCtrl,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          decoration: const InputDecoration(
+            labelText: 'كود الدخول (6 أرقام)',
+            prefixIcon: Icon(Icons.pin_outlined),
+            counterText: '',
+          ),
+          onSubmitted: (_) => _loading ? null : _submit(),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: _loading ? null : _submit,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: _loading
+                ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                : const Text('دخول', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          ),
+        ),
+      ]),
     );
   }
 }

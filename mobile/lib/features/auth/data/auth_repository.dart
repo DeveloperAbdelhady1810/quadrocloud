@@ -34,6 +34,14 @@ class AuthRepository {
     return _handleAuthResponse(res.data);
   }
 
+  Future<ClientModel> otpLogin(String email, String otp) async {
+    final res = await _api.dio.post('/auth/otp-login', data: {
+      'email': email,
+      'otp': otp,
+    });
+    return _handleAuthResponse(res.data);
+  }
+
   Future<ClientModel> _handleAuthResponse(Map<String, dynamic> data) async {
     final token = data['token'] as String;
     final client = ClientModel.fromJson(data['client']);

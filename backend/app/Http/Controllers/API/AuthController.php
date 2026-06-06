@@ -114,4 +114,38 @@ class AuthController extends Controller
         $client->update(['password' => $request->password]);
         return response()->json(['message' => 'تم تغيير كلمة المرور']);
     }
+
+    public function otpLogin(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp'   => 'required|string|size:6',
+        ]);
+
+        $client = \App\Models\Client::where('email', $request->email)
+            ->where('login_otp', $request->otp)
+            ->where('otp_expires_at', '>', now())
+            ->where('is_active', true)
+            ->first();
+
+        if (!$client) {
+            return response()->json(['message' => 'الكود غير صحيح أو منتهي الصلاحية'], 401);
+        }
+
+        $client->update(['login_otp' => null, 'otp_expires_at' => null]);
+
+        $token = $client->createToken('client-otp')->plainTextToken;
+
+        return response()->json([
+            'token'  => $token,
+            'client' => [
+                'id'           => $client->id,
+                'name'         => $client->name,
+                'email'        => $client->email,
+                'phone'        => $client->phone,
+                'company_name' => $client->company_name,
+                'locale'       => $client->locale,
+            ],
+        ]);
+    }
 }

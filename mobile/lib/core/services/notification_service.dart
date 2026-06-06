@@ -96,6 +96,10 @@ class NotificationService {
         _container?.read(notificationPendingRouteProvider.notifier).state = '/contracts';
       case 'invoices':
         _container?.read(notificationPendingRouteProvider.notifier).state = '/invoices';
+      case 'invoice_detail':
+      case 'payment_confirmed':
+        _container?.read(notificationPendingRouteProvider.notifier).state =
+            id != null ? '/invoices/$id' : '/invoices';
       default:
         break;
     }

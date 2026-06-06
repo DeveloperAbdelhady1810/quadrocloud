@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../core/network/api_client.dart';
 import 'invoice_model.dart';
+import 'package:dio/dio.dart';
 
 class InvoiceRepository {
   final ApiClient _api;
@@ -34,6 +38,17 @@ class InvoiceRepository {
 
   Future<void> sendEmail(int invoiceId) async {
     await _api.dio.post('/invoices/$invoiceId/send-email');
+  }
+
+  Future<void> downloadPdf(int invoiceId, String invoiceNumber) async {
+    final res = await _api.dio.get(
+      '/invoices/$invoiceId/pdf',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final dir  = await getTemporaryDirectory();
+    final file = File('${dir.path}/invoice-$invoiceNumber.pdf');
+    await file.writeAsBytes(res.data as List<int>);
+    await OpenFilex.open(file.path);
   }
 }
 

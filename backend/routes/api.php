@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function () {
     // Client auth
     Route::prefix('auth')->group(function () {
         Route::post('login', [AuthController::class, 'login']);
+        Route::post('otp-login', [AuthController::class, 'otpLogin']);
         Route::post('social', [SocialAuthController::class, 'login']);
     });
 

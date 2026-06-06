@@ -25,22 +25,55 @@ class ContractsScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(contractsProvider),
           retryLabel: l.retry,
         ),
-        data: (contracts) => contracts.isEmpty
-            ? EmptyState(icon: Icons.description_outlined, message: l.noContracts)
-            : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(contractsProvider),
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: contracts.length,
-                  itemBuilder: (_, i) => AnimatedListItem(
-                    index: i,
-                    child: PressableCard(
-                      onTap: () => context.go('/contracts/${contracts[i].id}'),
-                      child: _ContractCard(contract: contracts[i]),
+        data: (contracts) {
+          if (contracts.isEmpty) {
+            return EmptyState(icon: Icons.description_outlined, message: l.noContracts);
+          }
+          final expiring = contracts.where((c) =>
+              c.status == 'active' && c.daysUntilDue >= 0 && c.daysUntilDue <= 7).toList();
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(contractsProvider),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // Renewal alert banner
+                if (expiring.isNotEmpty) ...[
+                  AnimatedListItem(
+                    index: 0,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppTheme.warning.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.access_time_rounded, color: AppTheme.warning, size: 22),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            expiring.length == 1
+                                ? 'عقد "${expiring.first.name}" يستحق خلال ${expiring.first.daysUntilDue} أيام'
+                                : '${expiring.length} عقود تستحق خلال 7 أيام',
+                            style: const TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w700, fontSize: 13),
+                          ),
+                        ),
+                      ]),
                     ),
                   ),
-                ),
-              ),
+                ],
+                ...contracts.asMap().entries.map((e) => AnimatedListItem(
+                  index: e.key + (expiring.isNotEmpty ? 1 : 0),
+                  child: PressableCard(
+                    onTap: () => context.go('/contracts/${e.value.id}'),
+                    child: _ContractCard(contract: e.value),
+                  ),
+                )),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -23,6 +23,8 @@ class Client extends Authenticatable
         'avatar',
         'fcm_token',
         'locale',
+        'login_otp',
+        'otp_expires_at',
         'is_active',
         'created_by',
     ];

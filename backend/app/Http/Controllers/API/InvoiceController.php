@@ -66,7 +66,7 @@ class InvoiceController extends Controller
             'due_date'       => $i->due_date?->format('Y-m-d'),
             'paid_at'        => $i->paid_at?->format('Y-m-d H:i'),
             'payment_method' => $i->payment_method,
-            'description'    => $i->contract?->display_name ?? $i->additionalFee?->title ?? 'خدمة Quadro Cloud',
+            'description'    => $i->description ?? $i->contract?->display_name ?? $i->additionalFee?->title ?? 'خدمة Quadro Cloud',
         ];
     }
 }

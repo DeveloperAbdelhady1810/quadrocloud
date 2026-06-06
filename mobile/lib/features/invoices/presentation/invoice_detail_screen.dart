@@ -51,6 +51,7 @@ class _InvoiceDetailBody extends ConsumerStatefulWidget {
 class _InvoiceDetailBodyState extends ConsumerState<_InvoiceDetailBody> {
   bool _paying = false;
   bool _sending = false;
+  bool _downloading = false;
 
   Color get _statusColor {
     switch (widget.invoice.status) {
@@ -86,6 +87,18 @@ class _InvoiceDetailBodyState extends ConsumerState<_InvoiceDetailBody> {
       }
     } finally {
       if (mounted) setState(() => _paying = false);
+    }
+  }
+
+  Future<void> _downloadPdf() async {
+    if (_downloading) return;
+    setState(() => _downloading = true);
+    try {
+      await ref.read(invoiceRepositoryProvider).downloadPdf(widget.invoice.id, widget.invoice.invoiceNumber);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل تحميل الفاتورة')));
+    } finally {
+      if (mounted) setState(() => _downloading = false);
     }
   }
 
@@ -228,6 +241,31 @@ class _InvoiceDetailBodyState extends ConsumerState<_InvoiceDetailBody> {
               ),
               const SizedBox(height: 10),
             ],
+
+            // Download PDF button
+            PressableCard(
+              onTap: _downloading ? () {} : _downloadPdf,
+              child: Container(
+                height: 54,
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                ),
+                child: Center(
+                  child: _downloading
+                      ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2.5))
+                      : const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.picture_as_pdf_outlined, color: AppTheme.danger, size: 20),
+                          SizedBox(width: 10),
+                          Text('تحميل الفاتورة PDF',
+                              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15)),
+                        ]),
+                ),
+              ),
+            ),
 
             // Send email button
             PressableCard(

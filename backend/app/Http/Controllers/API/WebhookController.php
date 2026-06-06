@@ -72,6 +72,7 @@ class WebhookController extends Controller
                 'تم استلام دفعتك بنجاح للفاتورة ' . $invoice->invoice_number,
                 'push',
                 $invoice,
+                ['action' => 'invoice_detail', 'action_id' => (string) $invoice->id],
             );
         } else {
             $payment->status = 'failed';

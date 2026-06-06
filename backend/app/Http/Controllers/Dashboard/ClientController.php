@@ -87,4 +87,23 @@ class ClientController extends Controller
         \App\Models\ActivityLog::record($client->is_active ? 'client_activated' : 'client_deactivated', $client);
         return back()->with('success', 'تم تغيير حالة العميل');
     }
+
+    public function sendLoginLink(\App\Models\Client $client)
+    {
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $client->update([
+            'login_otp'      => $otp,
+            'otp_expires_at' => now()->addMinutes(15),
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($client->email)
+                ->send(new \App\Mail\LoginOtpMail($client, $otp));
+        } catch (\Throwable) {
+            return back()->with('error', 'فشل إرسال البريد الإلكتروني');
+        }
+
+        return back()->with('success', 'تم إرسال كود الدخول إلى ' . $client->email);
+    }
 }

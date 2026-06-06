@@ -13,6 +13,11 @@
     @can('manage_contracts')
     <a href="{{ route('dashboard.contracts.create', $client) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm">+ عقد جديد</a>
     @endcan
+    <a href="{{ route('dashboard.invoices.create', ['client_id' => $client->id]) }}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm">+ فاتورة يدوية</a>
+    <form method="POST" action="{{ route('dashboard.clients.send-login-link', $client) }}" class="inline">
+        @csrf
+        <button type="submit" class="border border-indigo-400 text-indigo-600 hover:bg-indigo-50 px-4 py-2 rounded-lg text-sm">📱 إرسال كود الدخول</button>
+    </form>
     <a href="{{ route('dashboard.reports.per-client', $client) }}" class="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50">تقرير العميل</a>
     @can('edit_clients')
     <form method="POST" action="{{ route('dashboard.clients.toggle', $client) }}" class="inline">
