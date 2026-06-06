@@ -21,7 +21,6 @@ class LoginOtpMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address('noreply@quadrocloud.net', 'Quadro Cloud'),
             subject: 'كود الدخول - Quadro Cloud',
         );
     }
