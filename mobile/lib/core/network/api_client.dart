@@ -7,10 +7,17 @@ class ApiClient {
   factory ApiClient() => _instance;
   ApiClient._();
 
-  final _storage = const FlutterSecureStorage();
-  late final Dio _dio;
+  /// Set this in main() after the router is ready.
+  /// Called automatically when the server returns 401.
+  static void Function()? onUnauthorized;
 
-  Dio get dio => _dio;
+  final _storage = const FlutterSecureStorage();
+  Dio? _dio;
+
+  Dio get dio {
+    assert(_dio != null, 'ApiClient.init() must be called before use');
+    return _dio!;
+  }
 
   Future<void> init() async {
     final token = await _storage.read(key: AppConstants.tokenKey);
@@ -25,25 +32,31 @@ class ApiClient {
       },
     ));
 
-    _dio.interceptors.add(InterceptorsWrapper(
+    _dio!.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
         final t = await _storage.read(key: AppConstants.tokenKey);
         if (t != null) options.headers['Authorization'] = 'Bearer $t';
         handler.next(options);
       },
-      onError: (error, handler) {
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401) {
+          // Token is invalid or expired — clear it and send user to login
+          await _storage.delete(key: AppConstants.tokenKey);
+          _dio!.options.headers.remove('Authorization');
+          onUnauthorized?.call();
+        }
         handler.next(error);
       },
     ));
   }
 
   void setToken(String token) {
-    _dio.options.headers['Authorization'] = 'Bearer $token';
+    _dio?.options.headers['Authorization'] = 'Bearer $token';
     _storage.write(key: AppConstants.tokenKey, value: token);
   }
 
   void clearToken() {
-    _dio.options.headers.remove('Authorization');
+    _dio?.options.headers.remove('Authorization');
     _storage.delete(key: AppConstants.tokenKey);
   }
 }

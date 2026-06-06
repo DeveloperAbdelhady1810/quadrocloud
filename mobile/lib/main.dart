@@ -15,6 +15,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await ApiClient().init();
+  ApiClient.onUnauthorized = () => router.go('/login');
   final savedLocale = await AppStorage.getLocale();
 
   final container = ProviderContainer(overrides: [
