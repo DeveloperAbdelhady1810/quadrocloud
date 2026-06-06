@@ -13,6 +13,7 @@ use App\Http\Controllers\Dashboard\PostController;
 use App\Http\Controllers\Dashboard\ServiceController;
 use App\Http\Controllers\Dashboard\NotificationController;
 use App\Http\Controllers\Dashboard\InvoiceController;
+use App\Http\Controllers\Dashboard\DueInvoicesController;
 
 Route::get('/', fn() => redirect()->route('dashboard.login'));
 
@@ -57,6 +58,11 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
         // Manual invoices
         Route::get('invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
         Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+
+        // Due invoices — auto-generate
+        Route::get('due-invoices', [DueInvoicesController::class, 'index'])->name('due-invoices.index');
+        Route::post('due-invoices/generate', [DueInvoicesController::class, 'generate'])->name('due-invoices.generate');
+        Route::post('due-invoices/generate-all', [DueInvoicesController::class, 'generateAll'])->name('due-invoices.generate-all');
 
         // Payments
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
