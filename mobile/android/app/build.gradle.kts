@@ -15,11 +15,12 @@ if (keyPropertiesFile.exists()) {
 }
 
 android {
-    namespace = "net.quadrocloud"
+    namespace = "net.quadrocloud.quadro_cloud"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -38,8 +39,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "net.quadrocloud"
-        minSdk = 21
+        applicationId = "net.quadrocloud.quadro_cloud"
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -57,6 +58,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // Firebase BoM — manages all Firebase library versions together
     implementation(platform("com.google.firebase:firebase-bom:34.0.0"))
     implementation("com.google.firebase:firebase-analytics")
