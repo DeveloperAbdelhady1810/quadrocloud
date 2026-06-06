@@ -20,7 +20,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             set -e
-            cd ~/public_html/Clients_Managements/backend
+            cd ~/domains/quadrocloud.net/public_html/Clients_Managements/backend
 
             echo "==> Pulling latest code"
             git pull origin main
