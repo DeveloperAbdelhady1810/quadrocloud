@@ -28,15 +28,8 @@ class ContractController extends Controller
 
                 $unpaidInvoice = $c->invoices->first();
 
-                // Show Pay when the invoice's own due_date is within 5 days OR already overdue.
-                // Use invoice.due_date (not contract.next_due_date which was already advanced).
-                $showPay = false;
-                if ($unpaidInvoice) {
-                    $invoiceDays = $unpaidInvoice->due_date
-                        ? (int) now()->startOfDay()->diffInDays($unpaidInvoice->due_date, false)
-                        : 0;
-                    $showPay = $invoiceDays <= 5;
-                }
+                // Show Pay whenever an unpaid/overdue invoice exists for this contract.
+                $showPay = $unpaidInvoice !== null;
 
                 return [
                     'id'                => $c->id,
