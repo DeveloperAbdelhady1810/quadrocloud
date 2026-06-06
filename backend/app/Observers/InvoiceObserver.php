@@ -17,4 +17,14 @@ class InvoiceObserver
             // Never block invoice creation due to mail failure
         }
     }
+
+    public function updated(Invoice $invoice): void
+    {
+        // When an invoice transitions to paid, advance the contract's next_due_date
+        if ($invoice->wasChanged('status') && $invoice->status === 'paid' && $invoice->contract_id) {
+            try {
+                $invoice->contract()->first()?->advanceNextDueDate();
+            } catch (\Throwable) {}
+        }
+    }
 }

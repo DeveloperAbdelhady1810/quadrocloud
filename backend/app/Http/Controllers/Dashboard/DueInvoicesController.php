@@ -11,12 +11,12 @@ class DueInvoicesController extends Controller
 {
     public function index()
     {
-        // Active contracts whose next_due_date has arrived and have no unpaid/overdue invoice
+        // Active contracts whose next_due_date has arrived and have no invoice for this period yet
         $due = Contract::with(['client', 'service'])
             ->where('status', 'active')
             ->whereNotNull('next_due_date')
             ->whereDate('next_due_date', '<=', now())
-            ->whereDoesntHave('invoices', fn($q) => $q->whereIn('status', ['unpaid', 'overdue']))
+            ->whereDoesntHave('invoices', fn($q) => $q->whereColumn('invoices.created_at', '>=', 'contracts.next_due_date'))
             ->orderBy('next_due_date')
             ->get();
 

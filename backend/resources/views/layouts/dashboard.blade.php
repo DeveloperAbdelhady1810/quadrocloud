@@ -43,7 +43,7 @@
             <a href="{{ route('dashboard.due-invoices.index') }}" class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-indigo-800 {{ request()->routeIs('dashboard.due-invoices.*') ? 'bg-indigo-700' : '' }}">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 المستحقات
-                @php $dueCount = \App\Models\Contract::where('status','active')->whereNotNull('next_due_date')->whereDate('next_due_date','<=',now())->whereDoesntHave('invoices', fn($q) => $q->whereIn('status',['unpaid','overdue']))->count(); @endphp
+                @php $dueCount = \App\Models\Contract::where('status','active')->whereNotNull('next_due_date')->whereDate('next_due_date','<=',now())->whereDoesntHave('invoices', fn($q) => $q->whereColumn('invoices.created_at','>=','contracts.next_due_date'))->count(); @endphp
                 @if($dueCount > 0)
                     <span class="mr-auto bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{{ $dueCount }}</span>
                 @endif
