@@ -3,7 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    body { font-family: DejaVu Sans, sans-serif; direction: rtl; color: #1a1a2e; font-size: 13px; margin: 0; padding: 30px; }
+    /*
+     * Cairo is embedded via a local file:// path so dompdf does not need internet access.
+     * This is the same font used in the Quadro Cloud mobile app and web dashboard.
+     * The file lives at public/fonts/Cairo.ttf (committed to git).
+     */
+    @font-face {
+        font-family: 'Cairo';
+        font-style: normal;
+        font-weight: normal;
+        src: url('{{ str_replace('\\', '/', public_path('fonts/Cairo.ttf')) }}') format('truetype');
+    }
+    @font-face {
+        font-family: 'Cairo';
+        font-style: normal;
+        font-weight: bold;
+        src: url('{{ str_replace('\\', '/', public_path('fonts/Cairo.ttf')) }}') format('truetype');
+    }
+    body { font-family: 'Cairo', DejaVu Sans, sans-serif; direction: rtl; unicode-bidi: embed; color: #1a1a2e; font-size: 13px; margin: 0; padding: 30px; }
     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px; }
     .company-name { font-size: 26px; font-weight: bold; color: #4f46e5; }
     .company-sub { color: #666; font-size: 12px; }
