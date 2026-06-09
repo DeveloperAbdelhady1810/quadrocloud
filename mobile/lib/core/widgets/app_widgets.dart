@@ -14,6 +14,8 @@ class ShimmerList extends StatelessWidget {
       highlightColor: const Color(0xFFF5F5FF),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         itemCount: count,
         itemBuilder: (_, __) => const _SkeletonCard(),
       ),
