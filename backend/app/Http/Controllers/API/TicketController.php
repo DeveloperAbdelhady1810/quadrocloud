@@ -51,11 +51,12 @@ class TicketController extends Controller
         $ticket = $request->user()->supportTickets()->with('messages')->findOrFail($id);
 
         return response()->json([
-            'id'       => $ticket->id,
-            'title'    => $ticket->title,
-            'status'   => $ticket->status,
-            'priority' => $ticket->priority,
-            'messages' => $ticket->messages->map(fn($m) => [
+            'id'         => $ticket->id,
+            'title'      => $ticket->title,
+            'status'     => $ticket->status,
+            'priority'   => $ticket->priority,
+            'created_at' => $ticket->created_at->format('Y-m-d H:i'),
+            'messages'   => $ticket->messages->map(fn($m) => [
                 'id'          => $m->id,
                 'sender_type' => $m->sender_type === \App\Models\Client::class ? 'client' : 'admin',
                 'message'     => $m->message,
