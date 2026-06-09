@@ -67,7 +67,15 @@ class ClientController extends Controller
             'notes'        => 'nullable|string',
             'locale'       => 'required|in:ar,en',
             'is_active'    => 'boolean',
+            'hide_name'    => 'boolean',
+            'hide_company' => 'boolean',
+            'hide_all'     => 'boolean',
         ]);
+
+        // Checkbox fields default to false when unchecked
+        $data['hide_name']    = $request->boolean('hide_name');
+        $data['hide_company'] = $request->boolean('hide_company');
+        $data['hide_all']     = $request->boolean('hide_all');
 
         if ($request->filled('password')) {
             $request->validate(['password' => 'string|min:8']);
@@ -76,6 +84,12 @@ class ClientController extends Controller
 
         $old = $client->toArray();
         $client->update($data);
+
+        // Clear any pending visibility request if the admin acted on it
+        if ($client->visibility_requested_at) {
+            $client->update(['visibility_request' => null, 'visibility_requested_at' => null]);
+        }
+
         \App\Models\ActivityLog::record('client_updated', $client, $old, $client->fresh()->toArray());
 
         return redirect()->route('dashboard.clients.show', $client)->with('success', 'تم تحديث بيانات العميل');

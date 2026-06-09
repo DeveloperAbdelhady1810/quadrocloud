@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:quadro_cloud/gen_l10n/app_localizations.dart';
 import '../data/explore_repository.dart';
 import '../data/post_model.dart';
 import '../data/service_model.dart';
+import '../../community/data/community_repository.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -22,7 +24,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final tabIndex = ref.read(notificationExploreTabProvider);
       if (tabIndex != _tab.index) _tab.animateTo(tabIndex);
@@ -47,15 +49,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
         title: Text(l.explore),
         bottom: TabBar(
           controller: _tab,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: [
             Tab(icon: const Icon(Icons.newspaper_outlined), text: l.news),
             Tab(icon: const Icon(Icons.grid_view_rounded), text: l.ourServices),
+            const Tab(icon: Icon(Icons.people_outline_rounded), text: 'العملاء'),
+            const Tab(icon: Icon(Icons.emoji_events_outlined), text: 'الترتيب'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tab,
-        children: const [_NewsTab(), _ServicesTab()],
+        children: const [_NewsTab(), _ServicesTab(), _ClientsTab(), _LeaderboardTab()],
       ),
     );
   }
@@ -493,6 +499,272 @@ class _FormView extends StatelessWidget {
           ),
         ),
       ]),
+    );
+  }
+}
+
+// ─── Clients Tab ──────────────────────────────────────────────────────────────
+
+class _ClientsTab extends ConsumerStatefulWidget {
+  const _ClientsTab();
+  @override
+  ConsumerState<_ClientsTab> createState() => _ClientsTabState();
+}
+
+class _ClientsTabState extends ConsumerState<_ClientsTab> {
+  // Local optimistic follow state
+  final Map<int, bool> _followingOverride = {};
+
+  Future<void> _toggle(int clientId, bool currentlyFollowing) async {
+    setState(() => _followingOverride[clientId] = !currentlyFollowing);
+    try {
+      final repo = ref.read(communityRepositoryProvider);
+      if (currentlyFollowing) {
+        await repo.unfollow(clientId);
+      } else {
+        await repo.follow(clientId);
+      }
+      ref.invalidate(ourClientsProvider);
+    } catch (_) {
+      setState(() => _followingOverride[clientId] = currentlyFollowing);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(ourClientsProvider);
+    return async.when(
+      loading: () => const ShimmerList(count: 6),
+      error: (e, _) => ErrorState(
+        message: 'تعذر التحميل',
+        onRetry: () => ref.invalidate(ourClientsProvider),
+        retryLabel: 'إعادة المحاولة',
+      ),
+      data: (clients) => clients.isEmpty
+          ? const EmptyState(icon: Icons.people_outline_rounded, message: 'لا يوجد عملاء بعد')
+          : RefreshIndicator(
+              onRefresh: () async => ref.invalidate(ourClientsProvider),
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: clients.length,
+                itemBuilder: (_, i) {
+                  final c = clients[i];
+                  final following = _followingOverride[c.id] ?? c.isFollowing;
+                  final medalColor = c.rank == 1
+                      ? AppTheme.gold
+                      : c.rank == 2
+                          ? AppTheme.silver
+                          : c.rank == 3
+                              ? AppTheme.bronze
+                              : AppTheme.primary;
+
+                  return AnimatedListItem(
+                    index: i,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+                      ),
+                      child: Row(children: [
+                        PressableCard(
+                          onTap: () => context.go('/community/clients/${c.id}'),
+                          child: CircleAvatar(
+                            radius: 22,
+                            backgroundColor: medalColor.withValues(alpha: 0.15),
+                            child: Text(c.name.substring(0, 1),
+                                style: TextStyle(fontWeight: FontWeight.w800, color: medalColor)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => context.go('/community/clients/${c.id}'),
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                              if (c.company != null)
+                                Text(c.company!, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                              Text('${c.contractsCount} عقد · ${c.score} نقطة',
+                                  style: TextStyle(fontSize: 11, color: medalColor, fontWeight: FontWeight.w600)),
+                            ]),
+                          ),
+                        ),
+                        if (!c.isMe)
+                          GestureDetector(
+                            onTap: () => _toggle(c.id, following),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: following ? Colors.transparent : AppTheme.primary,
+                                border: following ? Border.all(color: AppTheme.primary) : null,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                following ? 'متابَع' : 'متابعة',
+                                style: TextStyle(
+                                  color: following ? AppTheme.primary : Colors.white,
+                                  fontSize: 12, fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ]),
+                    ),
+                  );
+                },
+              ),
+            ),
+    );
+  }
+}
+
+// ─── Leaderboard Tab ──────────────────────────────────────────────────────────
+
+class _LeaderboardTab extends ConsumerWidget {
+  const _LeaderboardTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(leaderboardProvider);
+    return async.when(
+      loading: () => const ShimmerList(count: 8),
+      error: (e, _) => ErrorState(
+        message: 'تعذر التحميل',
+        onRetry: () => ref.invalidate(leaderboardProvider),
+        retryLabel: 'إعادة المحاولة',
+      ),
+      data: (data) => RefreshIndicator(
+        onRefresh: () async => ref.invalidate(leaderboardProvider),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+
+            // My rank banner
+            if (data.myRank != null) ...[
+              AnimatedListItem(
+                index: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF4338CA), Color(0xFF6366F1)],
+                      begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.emoji_events_outlined, color: Colors.white, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text('ترتيبك', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                      Text('#${data.myRank}', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                    ])),
+                    Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                      const Text('نقاطك', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                      Text('${data.myScore}', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                    ]),
+                  ]),
+                ),
+              ),
+            ],
+
+            // Entries
+            ...data.entries.asMap().entries.map((e) {
+              final entry   = e.value;
+              final color   = entry.medal == 'gold'
+                  ? AppTheme.gold
+                  : entry.medal == 'silver'
+                      ? AppTheme.silver
+                      : entry.medal == 'bronze'
+                          ? AppTheme.bronze
+                          : AppTheme.textSecondary;
+              final emoji = entry.medal == 'gold' ? '🥇' : entry.medal == 'silver' ? '🥈' : entry.medal == 'bronze' ? '🥉' : '';
+
+              return AnimatedListItem(
+                index: e.key + 1,
+                child: GestureDetector(
+                  onTap: () => context.go('/community/clients/${entry.clientId}'),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: entry.isGold ? AppTheme.gold.withValues(alpha: 0.07) : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: entry.isGold
+                            ? AppTheme.gold.withValues(alpha: 0.4)
+                            : entry.isMe
+                                ? AppTheme.primary.withValues(alpha: 0.3)
+                                : const Color(0xFFF1F5F9),
+                      ),
+                      boxShadow: entry.isGold
+                          ? [BoxShadow(color: AppTheme.gold.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4))]
+                          : null,
+                    ),
+                    child: Row(children: [
+                      SizedBox(
+                        width: 32,
+                        child: Text(
+                          emoji.isNotEmpty ? emoji : '#${entry.rank}',
+                          style: emoji.isNotEmpty
+                              ? const TextStyle(fontSize: 20)
+                              : TextStyle(fontWeight: FontWeight.w800, color: color, fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: color.withValues(alpha: 0.15),
+                        child: Text(entry.displayName.substring(0, 1),
+                            style: TextStyle(fontWeight: FontWeight.w800, color: color, fontSize: 13)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Flexible(child: Text(entry.displayName,
+                                maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
+                            if (entry.isMe) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(6)),
+                                child: const Text('أنت', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          ]),
+                          if (entry.company != null)
+                            Text(entry.company!, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                        ]),
+                      ),
+                      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                        Text('${entry.score}', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: color)),
+                        const Text('نقطة', style: TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
+                      ]),
+                      if (entry.isGold) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: AppTheme.gold, borderRadius: BorderRadius.circular(8)),
+                          child: const Text('خصم 5%',
+                              style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ]),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Models\Contract;
 use App\Models\Invoice;
+use App\Services\LeaderboardService;
 use Illuminate\Http\Request;
 
 class DueInvoicesController extends Controller
@@ -44,15 +45,17 @@ class DueInvoicesController extends Controller
             ->whereDoesntHave('invoices', fn($q) => $q->whereIn('status', ['unpaid', 'overdue']))
             ->get();
 
+        $lb    = app(LeaderboardService::class);
         $count = 0;
         foreach ($contracts as $contract) {
+            [$amount, $discounted] = $lb->applyGoldDiscount($contract->client, (float) $contract->price);
             Invoice::create([
                 'client_id'   => $contract->client_id,
                 'contract_id' => $contract->id,
-                'amount'      => $contract->price,
+                'amount'      => $amount,
                 'status'      => 'unpaid',
                 'due_date'    => now()->toDateString(),
-                'description' => $contract->display_name,
+                'description' => $contract->display_name . ($discounted ? ' (خصم 5% — العميل الذهبي 🏆)' : ''),
             ]);
             $count++;
         }
@@ -69,15 +72,17 @@ class DueInvoicesController extends Controller
             ->whereDoesntHave('invoices', fn($q) => $q->whereIn('status', ['unpaid', 'overdue']))
             ->get();
 
+        $lb    = app(LeaderboardService::class);
         $count = 0;
         foreach ($contracts as $contract) {
+            [$amount, $discounted] = $lb->applyGoldDiscount($contract->client, (float) $contract->price);
             Invoice::create([
                 'client_id'   => $contract->client_id,
                 'contract_id' => $contract->id,
-                'amount'      => $contract->price,
+                'amount'      => $amount,
                 'status'      => 'unpaid',
                 'due_date'    => now()->toDateString(),
-                'description' => $contract->display_name,
+                'description' => $contract->display_name . ($discounted ? ' (خصم 5% — العميل الذهبي 🏆)' : ''),
             ]);
             $count++;
         }

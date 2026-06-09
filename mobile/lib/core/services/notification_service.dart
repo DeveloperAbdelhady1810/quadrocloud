@@ -100,6 +100,15 @@ class NotificationService {
       case 'payment_confirmed':
         _container?.read(notificationPendingRouteProvider.notifier).state =
             id != null ? '/invoices/$id' : '/invoices';
+      case 'community_profile':
+      case 'contract_new':
+      case 'milestone':
+      case 'rank_up':
+        _container?.read(notificationPendingRouteProvider.notifier).state =
+            id != null ? '/community/clients/$id' : '/explore';
+      case 'leaderboard':
+        _container?.read(notificationExploreTabProvider.notifier).state = 3;
+        _container?.read(notificationPendingRouteProvider.notifier).state = '/explore';
       default:
         break;
     }

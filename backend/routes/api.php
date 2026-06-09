@@ -13,6 +13,7 @@ use App\Http\Controllers\API\WebhookController;
 use App\Http\Controllers\API\PostController;
 use App\Http\Controllers\API\PublicServiceController;
 use App\Http\Controllers\API\NotificationController;
+use App\Http\Controllers\API\CommunityController;
 
 Route::prefix('v1')->group(function () {
 
@@ -68,5 +69,17 @@ Route::prefix('v1')->group(function () {
         Route::post('tickets/{id}/reply', [TicketController::class, 'reply']);
 
         Route::get('notifications', [NotificationController::class, 'index']);
+
+        // Community
+        Route::prefix('community')->group(function () {
+            Route::get('clients',                    [CommunityController::class, 'clients']);
+            Route::get('leaderboard',                [CommunityController::class, 'leaderboard']);
+            Route::get('clients/{id}',               [CommunityController::class, 'profile']);
+            Route::post('clients/{id}/follow',       [CommunityController::class, 'follow']);
+            Route::post('clients/{id}/unfollow',     [CommunityController::class, 'unfollow']);
+            Route::get('following',                  [CommunityController::class, 'following']);
+            Route::get('followers',                  [CommunityController::class, 'followers']);
+            Route::post('visibility-request',        [CommunityController::class, 'visibilityRequest']);
+        });
     });
 });

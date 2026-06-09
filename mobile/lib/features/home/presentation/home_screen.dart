@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:quadro_cloud/gen_l10n/app_localizations.dart';
 import '../data/home_repository.dart';
+import '../../community/data/community_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_widgets.dart';
 
@@ -76,14 +77,38 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                 ],
 
-                // Quick action grid
+                // Our Clients — horizontal strip
                 AnimatedListItem(
                   index: data.pendingFees.length + 3,
-                  child: _SectionHeader(icon: Icons.apps_rounded, title: 'الوصول السريع'),
+                  child: _SectionHeader(icon: Icons.people_outline_rounded, title: 'عملاؤنا'),
                 ),
                 const SizedBox(height: 12),
                 AnimatedListItem(
                   index: data.pendingFees.length + 4,
+                  child: const _OurClientsStrip(),
+                ),
+                const SizedBox(height: 24),
+
+                // Best Clients — leaderboard preview
+                AnimatedListItem(
+                  index: data.pendingFees.length + 5,
+                  child: _SectionHeader(icon: Icons.emoji_events_outlined, title: 'أفضل العملاء'),
+                ),
+                const SizedBox(height: 12),
+                AnimatedListItem(
+                  index: data.pendingFees.length + 6,
+                  child: const _LeaderboardPreview(),
+                ),
+                const SizedBox(height: 24),
+
+                // Quick action grid
+                AnimatedListItem(
+                  index: data.pendingFees.length + 7,
+                  child: _SectionHeader(icon: Icons.apps_rounded, title: 'الوصول السريع'),
+                ),
+                const SizedBox(height: 12),
+                AnimatedListItem(
+                  index: data.pendingFees.length + 8,
                   child: _QuickActions(),
                 ),
               ],
@@ -388,6 +413,195 @@ class _ActionCardState extends State<_ActionCard> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─── Our Clients Strip ────────────────────────────────────────────────────────
+
+class _OurClientsStrip extends ConsumerWidget {
+  const _OurClientsStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(ourClientsProvider);
+    return async.when(
+      loading: () => const SizedBox(
+        height: 130,
+        child: ShimmerList(count: 1),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (clients) {
+        if (clients.isEmpty) return const SizedBox.shrink();
+        return SizedBox(
+          height: 130,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: clients.length,
+            itemBuilder: (_, i) {
+              final c = clients[i];
+              final medalColor = c.rank == 1
+                  ? AppTheme.gold
+                  : c.rank == 2
+                      ? AppTheme.silver
+                      : c.rank == 3
+                          ? AppTheme.bronze
+                          : AppTheme.primary;
+              return AnimatedListItem(
+                index: i,
+                msPerItem: 60,
+                child: PressableCard(
+                  onTap: () => context.go('/community/clients/${c.id}'),
+                  child: Container(
+                    width: 120,
+                    margin: const EdgeInsets.only(left: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [medalColor.withValues(alpha: 0.12), medalColor.withValues(alpha: 0.05)],
+                        begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: medalColor.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: medalColor.withValues(alpha: 0.2),
+                          child: Text(
+                            c.name.substring(0, 1),
+                            style: TextStyle(fontWeight: FontWeight.w800, color: medalColor, fontSize: 16),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(c.name, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11, color: AppTheme.textPrimary)),
+                        if (c.company != null)
+                          Text(c.company!, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                        const SizedBox(height: 4),
+                        Text('${c.contractsCount} عقد',
+                            style: TextStyle(fontSize: 10, color: medalColor, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── Leaderboard Preview ──────────────────────────────────────────────────────
+
+class _LeaderboardPreview extends ConsumerWidget {
+  const _LeaderboardPreview();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(leaderboardProvider);
+    return async.when(
+      loading: () => const ShimmerList(count: 3),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (data) {
+        final top3 = data.entries.take(3).toList();
+        if (top3.isEmpty) return const SizedBox.shrink();
+        return Column(
+          children: [
+            ...top3.asMap().entries.map((e) => _RankRow(entry: e.value)),
+            const SizedBox(height: 10),
+            PressableCard(
+              onTap: () {
+                // Switch Explore to leaderboard tab (index 3)
+                context.go('/explore?tab=3');
+              },
+              child: Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text('عرض الترتيب الكامل',
+                      style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _RankRow extends StatelessWidget {
+  final dynamic entry;
+  const _RankRow({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color medalColor = entry.medal == 'gold'
+        ? AppTheme.gold
+        : entry.medal == 'silver'
+            ? AppTheme.silver
+            : entry.medal == 'bronze'
+                ? AppTheme.bronze
+                : AppTheme.textSecondary;
+
+    final String medalEmoji = entry.medal == 'gold'
+        ? '🥇'
+        : entry.medal == 'silver'
+            ? '🥈'
+            : entry.medal == 'bronze'
+                ? '🥉'
+                : '#${entry.rank}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: entry.isGold
+            ? AppTheme.gold.withValues(alpha: 0.07)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: entry.isGold
+              ? AppTheme.gold.withValues(alpha: 0.4)
+              : const Color(0xFFF1F5F9),
+        ),
+        boxShadow: entry.isGold
+            ? [BoxShadow(color: AppTheme.gold.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4))]
+            : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Row(children: [
+        Text(medalEmoji, style: const TextStyle(fontSize: 20)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(entry.displayName,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppTheme.textPrimary)),
+            if (entry.company != null)
+              Text(entry.company, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+          ]),
+        ),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text('${entry.score}', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: medalColor)),
+          Text('نقطة', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
+        ]),
+        if (entry.isGold) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: AppTheme.gold, borderRadius: BorderRadius.circular(8)),
+            child: const Text('خصم 5%', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ]),
     );
   }
 }

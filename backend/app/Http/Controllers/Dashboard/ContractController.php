@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Services\CommunityNotifier;
 use Illuminate\Http\Request;
 
 class ContractController extends Controller
@@ -32,6 +33,29 @@ class ContractController extends Controller
 
         $contract = \App\Models\Contract::create($data);
         \App\Models\ActivityLog::record('contract_created', $contract);
+
+        // Notify followers of the new contract
+        try {
+            $totalContracts = $client->contracts()->count();
+            $notifier = app(CommunityNotifier::class);
+            $notifier->notifyFollowers(
+                $client,
+                'contract_new',
+                'عقد جديد 🤝',
+                "{$client->public_name} وقّع عقداً جديداً مع Quadro Cloud",
+                ['action' => 'community_profile', 'action_id' => (string) $client->id]
+            );
+            // Contract-count milestones: 5, 10, 25
+            if (in_array($totalContracts, [5, 10, 25])) {
+                $notifier->notifyFollowers(
+                    $client,
+                    'milestone',
+                    "إنجاز {$totalContracts} عقود 🎉",
+                    "{$client->public_name} وصل إلى {$totalContracts} عقود مع Quadro Cloud!",
+                    ['action' => 'community_profile', 'action_id' => (string) $client->id]
+                );
+            }
+        } catch (\Throwable) {}
 
         return redirect()->route('dashboard.clients.show', $client)->with('success', 'تم إضافة العقد');
     }

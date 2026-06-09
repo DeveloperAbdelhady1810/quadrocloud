@@ -13,6 +13,7 @@ import '../../features/tickets/presentation/ticket_detail_screen.dart';
 import '../../features/tickets/presentation/new_ticket_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/auth/presentation/settings_screen.dart';
+import '../../features/community/presentation/client_profile_screen.dart';
 import '../../features/main/main_shell.dart';
 import '../utils/storage.dart';
 
@@ -56,6 +57,9 @@ final router = GoRouter(
         }),
         GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
         GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+        GoRoute(path: '/community/clients/:id', builder: (_, state) {
+          return ClientProfileScreen(clientId: int.parse(state.pathParameters['id']!));
+        }),
       ],
     ),
   ],

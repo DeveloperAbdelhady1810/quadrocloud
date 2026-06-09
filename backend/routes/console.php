@@ -13,3 +13,6 @@ Schedule::command('contracts:generate-invoices')->dailyAt('00:05');
 
 // Send payment reminders (runs at 9am every day)
 Schedule::command('fees:send-reminders')->dailyAt('09:00');
+
+// Community: rank-change notifications + anniversaries (runs at 8am)
+Schedule::command('community:daily')->dailyAt('08:00');

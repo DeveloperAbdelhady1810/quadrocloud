@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:quadro_cloud/gen_l10n/app_localizations.dart';
 import '../data/auth_repository.dart';
 import '../data/client_model.dart';
+import '../../community/data/community_repository.dart';
 import '../../../core/utils/storage.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -122,6 +123,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ]),
             ),
           ),
+          const SizedBox(height: 16),
+
+          // ── Privacy / visibility ──────────────────────────────────────────
+          _SectionHeader(title: 'الخصوصية في مجتمع العملاء'),
+          _SettingCard(child: _VisibilityRequestForm()),
           const SizedBox(height: 16),
 
           // ── Change password ───────────────────────────────────────────────
@@ -458,6 +464,126 @@ class _ChangePasswordFormState extends ConsumerState<_ChangePasswordForm> {
                   : Text(l.save),
             ),
           ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── Visibility Request Form ──────────────────────────────────────────────────
+
+class _VisibilityRequestForm extends ConsumerStatefulWidget {
+  const _VisibilityRequestForm();
+  @override
+  ConsumerState<_VisibilityRequestForm> createState() => _VisibilityRequestFormState();
+}
+
+class _VisibilityRequestFormState extends ConsumerState<_VisibilityRequestForm> {
+  String? _selected;
+  bool _loading = false;
+  bool _sent = false;
+
+  Future<void> _submit() async {
+    if (_selected == null) return;
+    setState(() => _loading = true);
+    try {
+      await ref.read(communityRepositoryProvider).requestVisibility(_selected!);
+      setState(() => _sent = true);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حدث خطأ، حاول مرة أخرى')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_sent) {
+      return const Padding(
+        padding: EdgeInsets.all(18),
+        child: Row(children: [
+          Icon(Icons.check_circle_outline, color: AppTheme.success),
+          SizedBox(width: 10),
+          Expanded(child: Text('تم إرسال طلبك للمراجعة. سيتم تطبيق الإخفاء بعد مراجعة الإدارة.',
+              style: TextStyle(color: AppTheme.success, fontSize: 13))),
+        ]),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('يظهر اسمك وشركتك لعملاء Quadro Cloud الآخرين. يمكنك طلب إخفاء بعض بياناتك.',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+        const SizedBox(height: 16),
+        _VisibilityOption(
+          label: 'إخفاء اسمي فقط',
+          value: 'hide_name',
+          selected: _selected,
+          onTap: (v) => setState(() => _selected = v == _selected ? null : v),
+        ),
+        _VisibilityOption(
+          label: 'إخفاء اسم الشركة فقط',
+          value: 'hide_company',
+          selected: _selected,
+          onTap: (v) => setState(() => _selected = v == _selected ? null : v),
+        ),
+        _VisibilityOption(
+          label: 'إخفاء كل بياناتي',
+          value: 'hide_all',
+          selected: _selected,
+          onTap: (v) => setState(() => _selected = v == _selected ? null : v),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: (_selected == null || _loading) ? null : _submit,
+            style: ElevatedButton.styleFrom(minimumSize: const Size(0, 46)),
+            child: _loading
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('إرسال الطلب'),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _VisibilityOption extends StatelessWidget {
+  final String label;
+  final String value;
+  final String? selected;
+  final void Function(String) onTap;
+  const _VisibilityOption({required this.label, required this.value, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = selected == value;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primary.withValues(alpha: 0.07) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSelected ? AppTheme.primary : const Color(0xFFE2E8F0)),
+        ),
+        child: Row(children: [
+          Icon(isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+              color: isSelected ? AppTheme.primary : AppTheme.textSecondary, size: 20),
+          const SizedBox(width: 10),
+          Text(label, style: TextStyle(
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? AppTheme.primary : AppTheme.textPrimary,
+            fontSize: 14,
+          )),
         ]),
       ),
     );

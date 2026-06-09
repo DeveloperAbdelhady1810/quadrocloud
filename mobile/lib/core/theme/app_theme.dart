@@ -14,6 +14,11 @@ class AppTheme {
   static const Color textPrimary = Color(0xFF1A1A2E);
   static const Color textSecondary = Color(0xFF64748B);
 
+  // Medal colors for leaderboard
+  static const Color gold   = Color(0xFFFFD700);
+  static const Color silver = Color(0xFFC0C0C0);
+  static const Color bronze = Color(0xFFCD7F32);
+
   // Dark mode equivalents
   static const Color darkSurface = Color(0xFF0F0F1A);
   static const Color darkCard = Color(0xFF1A1A2E);

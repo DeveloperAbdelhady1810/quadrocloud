@@ -27,6 +27,12 @@ class Client extends Authenticatable
         'otp_expires_at',
         'is_active',
         'created_by',
+        'hide_name',
+        'hide_company',
+        'hide_all',
+        'visibility_request',
+        'visibility_requested_at',
+        'last_rank',
     ];
 
     protected $hidden = [
@@ -38,10 +44,43 @@ class Client extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_active' => 'boolean',
+            'email_verified_at'       => 'datetime',
+            'password'                => 'hashed',
+            'is_active'               => 'boolean',
+            'hide_name'               => 'boolean',
+            'hide_company'            => 'boolean',
+            'hide_all'                => 'boolean',
+            'visibility_requested_at' => 'datetime',
         ];
+    }
+
+    // ─── Community visibility accessors ──────────────────────────────────────
+
+    public function getPublicNameAttribute(): string
+    {
+        return ($this->hide_name || $this->hide_all) ? 'عميل Quadro' : $this->name;
+    }
+
+    public function getPublicCompanyAttribute(): ?string
+    {
+        return ($this->hide_company || $this->hide_all) ? null : $this->company_name;
+    }
+
+    // ─── Follow relationships ─────────────────────────────────────────────────
+
+    public function following()
+    {
+        return $this->belongsToMany(Client::class, 'client_follows', 'follower_id', 'followed_id')->withTimestamps();
+    }
+
+    public function followers()
+    {
+        return $this->belongsToMany(Client::class, 'client_follows', 'followed_id', 'follower_id')->withTimestamps();
+    }
+
+    public function isFollowedBy(Client $client): bool
+    {
+        return $this->followers()->where('follower_id', $client->id)->exists();
     }
 
     public function contracts()
