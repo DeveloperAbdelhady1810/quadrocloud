@@ -48,7 +48,7 @@ class LeaderboardService
             LEFT JOIN contracts con ON con.id = i.contract_id
             WHERE c.hide_all = 0
               AND c.is_active = 1
-            GROUP BY c.id
+            GROUP BY c.id, c.name, c.company_name, c.avatar, c.hide_name, c.hide_company, c.hide_all, c.last_rank
             ORDER BY score DESC
         ";
 
