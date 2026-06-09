@@ -280,15 +280,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         const SizedBox(height: 20),
 
                         // Social buttons
-                        _SocialButton(
-                          onTap: socialLoading != null ? null : () => _socialLogin('google'),
-                          loading: socialLoading == 'google',
-                          icon: _GoogleIcon(),
-                          label: 'متابعة مع Google',
-                          borderColor: Colors.grey.shade200,
-                          textColor: AppTheme.textPrimary,
-                        ),
-
                         if (Platform.isIOS) ...[
                           const SizedBox(height: 12),
                           _SocialButton(
@@ -300,6 +291,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             textColor: Colors.white,
                           ),
                         ],
+                        _SocialButton(
+                          onTap: socialLoading != null ? null : () => _socialLogin('google'),
+                          loading: socialLoading == 'google',
+                          icon: _GoogleIcon(),
+                          label: 'متابعة مع Google',
+                          borderColor: Colors.grey.shade200,
+                          textColor: AppTheme.textPrimary,
+                        ),
+
 
                         // OTP login link
                         const SizedBox(height: 20),

@@ -1,0 +1,8 @@
+Welcome to Quadro Cloud!
+
+This is the initial release of your client portal. You can now:
+- View and pay your invoices directly in the app
+- Track all your service contracts and renewal dates
+- Submit and follow up on support tickets
+- Get push notifications for payment reminders and ticket updates
+- Switch between Arabic and English at any time

@@ -1,0 +1,30 @@
+Quadro Cloud is your dedicated client portal — manage your service contracts, invoices, and support requests all from one place.
+
+KEY FEATURES
+
+Dashboard
+Get an instant overview of your next payment due date, overdue invoices, and pending additional fees the moment you open the app. A countdown card shows exactly how many days remain before your next bill is due, color-coded so urgent items always stand out.
+
+Contracts
+View all your active and past service contracts in one list. See renewal dates, contract status, and billing cycle at a glance. The app alerts you when a contract is expiring within 7 days so you're never caught off guard.
+
+Invoices
+Browse your full invoice history and see exactly what you owe. Pay outstanding balances securely via the integrated payment gateway — directly inside the app without switching to a browser.
+
+Payment History
+Access a complete, chronological record of every transaction. Confirm past payments and reference amounts whenever you need them.
+
+Support Tickets
+Submit a support request and track its progress without picking up the phone or opening your email. See ticket status, category, and priority in real time.
+
+News & Services
+Browse the latest company announcements and explore the full catalog of available services and packages. Stay informed about new offerings and promotions.
+
+Push Notifications
+Receive instant alerts for upcoming payment deadlines, new invoices, and support ticket replies — so nothing slips through the cracks.
+
+Arabic & English
+Fully supports both Arabic (right-to-left) and English. Switch at any time in Settings to work in your preferred language.
+
+Dark Mode
+A carefully designed dark theme ensures comfortable reading day or night.

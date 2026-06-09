@@ -1,0 +1,26 @@
+# Devices to capture
+devices([
+  "iPhone 15 Pro Max",   # 6.7" — required by App Store
+  "iPhone 16 Pro Max",   # 6.9" — new primary size
+])
+
+# Languages
+languages([
+  "en-US",
+  "ar-SA",
+])
+
+# Scheme that runs the screenshot UI tests
+scheme "Runner"
+
+# Output directory
+output_directory "./fastlane/screenshots"
+
+# Clear previous screenshots before a new run
+clear_previous_screenshots true
+
+# Override status bar to show a clean 9:41 AM full signal
+override_status_bar true
+
+# Stop after first failure per device
+stop_after_first_error false
