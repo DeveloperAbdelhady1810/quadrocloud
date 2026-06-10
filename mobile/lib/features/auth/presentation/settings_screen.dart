@@ -36,16 +36,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _deleteAccount() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('حذف الحساب', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w800)),
         content: const Text(
           'سيتم تعطيل حسابك ولن تتمكن من تسجيل الدخول مجدداً.\n\nهل أنت متأكد؟',
           style: TextStyle(height: 1.6),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('إلغاء')),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
             child: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white)),
           ),
@@ -69,13 +69,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('تسجيل الخروج'),
         content: const Text('هل أنت متأكد من تسجيل الخروج؟'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('إلغاء')),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogCtx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
             child: const Text('خروج'),
           ),
