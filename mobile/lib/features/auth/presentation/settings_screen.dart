@@ -33,6 +33,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.read(_localeProvider.notifier).state = locale;
   }
 
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('حذف الحساب', style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w800)),
+        content: const Text(
+          'سيتم تعطيل حسابك ولن تتمكن من تسجيل الدخول مجدداً.\n\nهل أنت متأكد؟',
+          style: TextStyle(height: 1.6),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            child: const Text('تأكيد الحذف', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      if (!mounted) return;
+      context.go('/login');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حدث خطأ، حاول مرة أخرى')),
+        );
+      }
+    }
+  }
+
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -156,6 +189,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     Text(l.logout, style: const TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w700, fontSize: 15)),
                   ]),
                 ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Delete account ────────────────────────────────────────────────
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: _deleteAccount,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.delete_outline_rounded, color: Colors.grey.shade400, size: 18),
+                  const SizedBox(width: 8),
+                  Text('حذف الحساب', style: TextStyle(color: Colors.grey.shade400, fontSize: 13, fontWeight: FontWeight.w600)),
+                ]),
               ),
             ),
           ),

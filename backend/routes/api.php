@@ -45,6 +45,7 @@ Route::prefix('v1')->group(function () {
             Route::put('locale', [AuthController::class, 'updateLocale']);
             Route::put('password', [AuthController::class, 'changePassword']);
             Route::put('profile', [AuthController::class, 'updateProfile']);
+            Route::delete('account', [AuthController::class, 'deleteAccount']);
         });
 
         Route::get('dashboard', [DashboardController::class, 'index']);

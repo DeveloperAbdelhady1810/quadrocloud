@@ -61,6 +61,12 @@ class AuthRepository {
     await AppStorage.clearAll();
   }
 
+  Future<void> deleteAccount() async {
+    await _api.dio.delete('/auth/account');
+    _api.clearToken();
+    await AppStorage.clearAll();
+  }
+
   Future<void> changePassword(String current, String newPass) async {
     await _api.dio.put('/auth/password', data: {
       'current_password': current,

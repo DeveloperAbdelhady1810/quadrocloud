@@ -115,6 +115,14 @@ class AuthController extends Controller
         return response()->json(['message' => 'تم تغيير كلمة المرور']);
     }
 
+    public function deleteAccount(Request $request)
+    {
+        $client = $request->user();
+        $client->tokens()->delete();
+        $client->update(['is_active' => false]);
+        return response()->json(['message' => 'تم تعطيل الحساب']);
+    }
+
     public function otpLogin(Request $request)
     {
         $request->validate([
